@@ -22,10 +22,12 @@ on:
     branches:
       - main
       - branch-*
+      - develop/**
   pull_request:
     branches:
       - main
       - branch-*
+      - develop/**
 
 jobs:
   celeborn_cpp_check_lint:
@@ -76,66 +78,94 @@ jobs:
         run: |
           echo $PATH
           echo "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" >>"$GITHUB_PATH"
-      - name: Setup JDK 8
+      - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: zulu
-          java-version: 8
+          java-version: 17
           cache: maven
           check-latest: false
+          server-id: arenadata
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
+      - name: Copy Maven settings to root's home
+        run: |
+          mkdir -p /root/.m2 || true
+          cp /github/home/.m2/settings.xml /root/.m2/settings.xml || true
       - name: Compile & Install Celeborn Java
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USERNAME: ${{ github.actor }}
         run: build/mvn clean install -DskipTests
       - name: Run Java-Write Cpp-Read Hybrid Integration Test (NONE Decompression)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USERNAME: ${{ github.actor }}
         run: |
-          MAVEN_OPTS="-XX:MaxDirectMemorySize=2G" build/mvn -pl worker \
+          MAVEN_OPTS="-XX:MaxDirectMemorySize=2G --add-opens java.base/jdk.internal.misc=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED" build/mvn -pl worker \
             test-compile exec:java \
             -Dexec.classpathScope="test" \
             -Dexec.mainClass="org.apache.celeborn.service.deploy.cluster.JavaWriteCppReadTestWithNONE"
       - name: Run Java-Write Cpp-Read Hybrid Integration Test (LZ4 Decompression)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USERNAME: ${{ github.actor }}
         run: |
-          MAVEN_OPTS="-XX:MaxDirectMemorySize=2G" build/mvn -pl worker \
+          MAVEN_OPTS="-XX:MaxDirectMemorySize=2G --add-opens java.base/jdk.internal.misc=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED" build/mvn -pl worker \
             test-compile exec:java \
             -Dexec.classpathScope="test" \
             -Dexec.mainClass="org.apache.celeborn.service.deploy.cluster.JavaWriteCppReadTestWithLZ4"
       - name: Run Java-Write Cpp-Read Hybrid Integration Test (ZSTD Decompression)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USERNAME: ${{ github.actor }}
         run: |
-          MAVEN_OPTS="-XX:MaxDirectMemorySize=2G" build/mvn -pl worker \
+          MAVEN_OPTS="-XX:MaxDirectMemorySize=2G --add-opens java.base/jdk.internal.misc=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED" build/mvn -pl worker \
             test-compile exec:java \
             -Dexec.classpathScope="test" \
             -Dexec.mainClass="org.apache.celeborn.service.deploy.cluster.JavaWriteCppReadTestWithZSTD"
       - name: Run Cpp-Write Java-Read Hybrid Integration Test (NONE Compression)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USERNAME: ${{ github.actor }}
         run: |
-          MAVEN_OPTS="-XX:MaxDirectMemorySize=2G" build/mvn -pl worker \
+          MAVEN_OPTS="-XX:MaxDirectMemorySize=2G --add-opens java.base/jdk.internal.misc=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED" build/mvn -pl worker \
             test-compile exec:java \
             -Dexec.classpathScope="test" \
             -Dexec.mainClass="org.apache.celeborn.service.deploy.cluster.CppWriteJavaReadTestWithNONE"
       - name: Run Cpp-Write Java-Read Hybrid Integration Test (LZ4 Compression)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USERNAME: ${{ github.actor }}
         run: |
-          MAVEN_OPTS="-XX:MaxDirectMemorySize=2G" build/mvn -pl worker \
+          MAVEN_OPTS="-XX:MaxDirectMemorySize=2G --add-opens java.base/jdk.internal.misc=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED" build/mvn -pl worker \
             test-compile exec:java \
             -Dexec.classpathScope="test" \
             -Dexec.mainClass="org.apache.celeborn.service.deploy.cluster.CppWriteJavaReadTestWithLZ4"
       - name: Run Cpp-Write Java-Read Hybrid Integration Test (ZSTD Compression)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USERNAME: ${{ github.actor }}
         run: |
-          MAVEN_OPTS="-XX:MaxDirectMemorySize=2G" build/mvn -pl worker \
+          MAVEN_OPTS="-XX:MaxDirectMemorySize=2G --add-opens java.base/jdk.internal.misc=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED" build/mvn -pl worker \
             test-compile exec:java \
             -Dexec.classpathScope="test" \
             -Dexec.mainClass="org.apache.celeborn.service.deploy.cluster.CppWriteJavaReadTestWithZSTD"
       - name: Run Cpp-MergeWrite Java-Read Hybrid Integration Test (NONE Compression)
         run: |
-          MAVEN_OPTS="-XX:MaxDirectMemorySize=2G" build/mvn -pl worker \
+          MAVEN_OPTS="-XX:MaxDirectMemorySize=2G --add-opens java.base/jdk.internal.misc=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED" build/mvn -pl worker \
             test-compile exec:java \
             -Dexec.classpathScope="test" \
             -Dexec.mainClass="org.apache.celeborn.service.deploy.cluster.CppMergeWriteJavaReadTestWithNONE"
       - name: Run Cpp-MergeWrite Java-Read Hybrid Integration Test (LZ4 Compression)
         run: |
-          MAVEN_OPTS="-XX:MaxDirectMemorySize=2G" build/mvn -pl worker \
+          MAVEN_OPTS="-XX:MaxDirectMemorySize=2G --add-opens java.base/jdk.internal.misc=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED" build/mvn -pl worker \
             test-compile exec:java \
             -Dexec.classpathScope="test" \
             -Dexec.mainClass="org.apache.celeborn.service.deploy.cluster.CppMergeWriteJavaReadTestWithLZ4"
       - name: Run Cpp-MergeWrite Java-Read Hybrid Integration Test (ZSTD Compression)
         run: |
-          MAVEN_OPTS="-XX:MaxDirectMemorySize=2G" build/mvn -pl worker \
+          MAVEN_OPTS="-XX:MaxDirectMemorySize=2G --add-opens java.base/jdk.internal.misc=ALL-UNNAMED --add-opens java.base/sun.nio.ch=ALL-UNNAMED" build/mvn -pl worker \
             test-compile exec:java \
             -Dexec.classpathScope="test" \
             -Dexec.mainClass="org.apache.celeborn.service.deploy.cluster.CppMergeWriteJavaReadTestWithZSTD"

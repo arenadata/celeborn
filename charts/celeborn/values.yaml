@@ -204,6 +204,8 @@ master:
     runAsGroup: 10006
     # The group ID to use when modifying the ownership and permissions of the mounted volumes.
     fsGroup: 10006
+    # Only change permissions and ownership if the permission and the ownership of root directory does not match with expected permissions of the volume
+    fsGroupChangePolicy: "OnRootMismatch"
 
   # -- Volume claim templates for Celeborn master statefulset.
   volumeClaimTemplates:
@@ -217,6 +219,9 @@ master:
   #         storage: 100Gi
   #       limits:
   #         storage: 100Gi
+
+  # -- Enable init container for PVC chmod
+  pvcInitContainerEnabled: false
 
 worker:
   # -- Number of Celeborn worker replicas to deploy, should less than node number.
@@ -399,6 +404,9 @@ worker:
   #         storage: 100Gi
   #       limits:
   #         storage: 100Gi
+
+  # -- Enable init container for PVC chmod
+  pvcInitContainerEnabled: false
 
 serviceAccount:
   # -- Whether to create a service account for Celeborn.

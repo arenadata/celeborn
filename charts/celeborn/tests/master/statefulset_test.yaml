@@ -18,7 +18,7 @@
 suite: Test Celeborn master statefulset
 
 templates:
-  - configmap.yaml
+  - secret.yaml
   - master/statefulset.yaml
 
 release:
@@ -40,7 +40,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.metadata.annotations["celeborn.apache.org/conf-hash"]
-          value: 316cfc634ed083bd70e36ad0b429578ace6893d4de3ef4897a078db5f01a7522
+          value: 8662deefa3e5ef888dbc4a09b0d9a10a43ea64b4e5d83da5fbf2b924b8b967e2
 
   - it: Should change checksum annotation when celeborn config changes
     template: master/statefulset.yaml
@@ -50,10 +50,10 @@ tests:
     asserts:
       - notEqual:
           path: spec.template.metadata.annotations["celeborn.apache.org/conf-hash"]
-          value: 316cfc634ed083bd70e36ad0b429578ace6893d4de3ef4897a078db5f01a7522
+          value: 8662deefa3e5ef888dbc4a09b0d9a10a43ea64b4e5d83da5fbf2b924b8b967e2
       - equal:
           path: spec.template.metadata.annotations["celeborn.apache.org/conf-hash"]
-          value: fae6199c4ac5ac5a9fd9049705ac239ad6e3474a65db55bdd98f29720122b756
+          value: cd3d01150576c1abe4c51c6f76a65c82eb70f4d2a5304809640cefb0165ae79f
 
   - it: Should add extra pod annotations if `master.annotations` is specified
     template: master/statefulset.yaml
@@ -203,6 +203,29 @@ tests:
           limits:
             cpu: 100m
             memory: 128Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[?(@.name=='celeborn')].resources
+          value:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+
+  - it: Should use the specified resources if `master.resources` is set and pvcInitContainerEnabled enabled
+    template: master/statefulset.yaml
+    set:
+      master:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+        pvcInitContainerEnabled: true
     asserts:
       - equal:
           path: spec.template.spec.initContainers[0].resources
