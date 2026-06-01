@@ -17,11 +17,15 @@
 
 package org.apache.celeborn.server.common.http.api
 
-import org.glassfish.jersey.server.ResourceConfig
+import org.glassfish.jersey.server.{ResourceConfig, ServerProperties}
 
 import org.apache.celeborn.server.common.Service
 
 class OpenAPIConfig(serviceName: String) extends ResourceConfig {
+  // Celeborn documents its REST API via OpenAPI, not WADL. Disable Jersey's WADL feature so it
+  // does not look for a JAXBContext (absent since JDK 11 removed JAXB) and log a noisy
+  // "JAXBContext implementation could not be found. WADL feature is disabled." warning at startup.
+  property(ServerProperties.WADL_FEATURE_DISABLE, true)
   packages(OpenAPIConfig.packages(serviceName): _*)
   register(classOf[CelebornOpenApiResource])
   register(classOf[CelebornScalaObjectMapper])

@@ -22,10 +22,12 @@ on:
     branches:
       - main
       - branch-*
+      - develop/**
   pull_request:
     branches:
       - main
       - branch-*
+      - develop/**
 
 jobs:
   lint:

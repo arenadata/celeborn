@@ -63,7 +63,7 @@ object Dependencies {
   val jdkToolsVersion = "0.1"
   val metricsVersion = "4.2.25"
   val mockitoVersion = "4.11.0"
-  val nettyVersion = "4.2.10.Final"
+  val nettyVersion = "4.2.12.Final"
   val ratisVersion = "3.2.2"
   val roaringBitmapVersion = "1.0.6"
   val rocksdbJniVersion = "9.10.0"
@@ -98,8 +98,8 @@ object Dependencies {
   val bouncycastleVersion = "1.77"
 
   // Versions for proto
-  val protocVersion = "3.25.5"
-  val protoVersion = "3.25.5"
+  val protocVersion = "3.25.9"
+  val protoVersion = "3.25.9"
 
   // Tez
   val tezVersion = "0.10.2"
@@ -131,10 +131,10 @@ object Dependencies {
     ExclusionRule("log4j", "log4j"),
     ExclusionRule("org.slf4j", "slf4j-log4j12"))
   val hadoopAws = "org.apache.hadoop" % "hadoop-aws" % hadoopVersion excludeAll (
-    ExclusionRule("com.amazonaws", "aws-java-sdk-bundle"))
-  val awsS3 = "com.amazonaws" % "aws-java-sdk-s3" % awsS3Version
-  // Needed for com.amazonaws.auth.WebIdentityTokenCredentialsProvider
-  val awsSTS = "com.amazonaws" % "aws-java-sdk-sts" % awsS3Version
+    ExclusionRule("software.amazon.awssdk", "bundle"))
+  val awsS3 = "software.amazon.awssdk" % "s3" % awsS3Version
+  // Needed for software.amazon.awssdk.auth.credentials.WebIdentityTokenFileCredentialsProvider
+  val awsSTS = "software.amazon.awssdk" % "sts" % awsS3Version
   val commonsCollections = "commons-collections" % "commons-collections" % commonsCollectionsVersion
   val hadoopAliyun = "org.apache.hadoop" % "hadoop-aliyun" % hadoopVersion
   val aliyunOss = "com.aliyun.oss" % "aliyun-sdk-oss" % aliyunOssVersion
@@ -317,11 +317,13 @@ object CelebornCommonSettings {
   val SCALA_2_12_18 = "2.12.18"
   val SCALA_2_13_5 = "2.13.5"
   val SCALA_2_13_8 = "2.13.8"
+  val SCALA_2_13_15 = "2.13.15"
   val SCALA_2_13_16 = "2.13.16"
   val SCALA_2_13_17 = "2.13.17"
-  val ALL_SCALA_VERSIONS = Seq(SCALA_2_11_12, SCALA_2_12_10, SCALA_2_12_15, SCALA_2_12_17, SCALA_2_12_18, SCALA_2_13_5, SCALA_2_13_8, SCALA_2_13_16, SCALA_2_13_17)
+  val SCALA_2_13_18 = "2.13.18"
+  val ALL_SCALA_VERSIONS = Seq(SCALA_2_11_12, SCALA_2_12_10, SCALA_2_12_15, SCALA_2_12_17, SCALA_2_12_18, SCALA_2_13_5, SCALA_2_13_8, SCALA_2_13_15, SCALA_2_13_16, SCALA_2_13_17, SCALA_2_13_18)
 
-  val DEFAULT_SCALA_VERSION = SCALA_2_12_18
+  val DEFAULT_SCALA_VERSION = SCALA_2_13_15
 
   val projectScalaVersion = defaultScalaVersion()
 
@@ -526,6 +528,7 @@ object Utils {
     case Some("spark-3.5") => Some(Spark35)
     case Some("spark-4.0") => Some(Spark40)
     case Some("spark-4.1") => Some(Spark41)
+    case Some("spark-4.2") => Some(Spark42)
     case _ => None
   }
 
@@ -968,11 +971,12 @@ object Spark35 extends SparkClientProjects {
   val sparkClientShadedProjectPath = "client-spark/spark-3-shaded"
   val sparkClientShadedProjectName = "celeborn-client-spark-3-shaded"
 
-  val lz4JavaVersion = "1.8.0"
-  val sparkProjectScalaVersion = "2.12.18"
+  val lz4JavaVersion = "1.10.2"
+  val sparkProjectScalaVersion = "2.13.15"
 
-  val sparkVersion = "3.5.8"
-  val zstdJniVersion = "1.5.5-4"
+  val sparkVersion = "3.5.4.4-4.3.0-1"
+  val zstdJniVersion = "1.5.7-7"
+  val scalaBinaryVersion = "2.13"
 
   override val sparkColumnarShuffleVersion: String = "3.5"
 }
@@ -1006,6 +1010,24 @@ object Spark41 extends SparkClientProjects {
 
   val sparkVersion = "4.1.2"
   val zstdJniVersion = "1.5.7-6"
+  val scalaBinaryVersion = "2.13"
+
+  override val sparkColumnarShuffleVersion: String = "4"
+}
+
+object Spark42 extends SparkClientProjects {
+
+  val sparkClientProjectPath = "client-spark/spark-3"
+  val sparkClientProjectName = "celeborn-client-spark-4"
+  val sparkClientShadedProjectPath = "client-spark/spark-4-shaded"
+  val sparkClientShadedProjectName = "celeborn-client-spark-4-shaded"
+
+  val lz4JavaVersion = "1.11.0"
+  val sparkProjectScalaVersion = "2.13.18"
+
+  val sparkVersion = "4.2.0.1-4.3.0-0"
+  val zstdJniVersion = "1.5.7-7"
+  val nettyVersion = "4.2.12.Final"
   val scalaBinaryVersion = "2.13"
 
   override val sparkColumnarShuffleVersion: String = "4"

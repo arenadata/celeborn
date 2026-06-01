@@ -15,8 +15,18 @@
 # limitations under the License.
 #
 
-ARG java_image_tag=8-jdk-noble
-FROM eclipse-temurin:${java_image_tag}
+ARG ubuntu_image_repository=ubuntu
+ARG ubuntu_image_tag=22.04
+ARG jdk_package=openjdk-17-jdk
+ARG custom_jdk_path
+ARG additional_packages_repo
+FROM ${ubuntu_image_repository}:${ubuntu_image_tag}
+
+ARG ubuntu_image_repository
+ARG ubuntu_image_tag
+ARG jdk_package
+ARG custom_jdk_path
+ARG additional_packages_repo
 
 ARG celeborn_uid=10006
 ARG celeborn_gid=10006
@@ -26,29 +36,37 @@ ENV CELEBORN_PREFER_JEMALLOC=true
 ENV PATH=${PATH}:/opt/busybox:${CELEBORN_HOME}/sbin:${CELEBORN_HOME}/bin
 
 RUN set -ex && \
+    if [ -n "${additional_packages_repo}" ]; then \
+        echo ${additional_packages_repo} > /etc/apt/sources.list.d/additional.list; \
+    fi && \
     apt-get update && \
-    apt-get install -y bash tini busybox bind9-utils telnet net-tools procps krb5-user dnsutils libjemalloc-dev && \
+    apt-get install -y bash tini busybox bind9-utils telnet net-tools procps krb5-user dnsutils libjemalloc-dev ${jdk_package} && \
+    if [ -n "${custom_jdk_path}" ]; then \
+        update-alternatives --install /usr/bin/java java ${custom_jdk_path}/bin/java 100; \
+        update-alternatives --install /usr/bin/javac javac ${custom_jdk_path}/bin/javac 100; \
+    fi && \
+    if [ -n "${additional_packages_repo}" ]; then \
+        rm -f /etc/apt/sources.list.d/additional.list; \
+    fi && \
+    apt-get clean && \
     ln -snf /bin/bash /bin/sh && \
     rm -rf /var/cache/apt/* && \
     mkdir /opt/busybox && \
     busybox --install /opt/busybox && \
     groupadd --gid=${celeborn_gid} celeborn && \
     useradd  --uid=${celeborn_uid} --gid=${celeborn_gid} celeborn -d /home/celeborn -m && \
-    mkdir -p ${CELEBORN_HOME}
+    mkdir -p ${CELEBORN_HOME} && \
+    chown -R celeborn:celeborn ${CELEBORN_HOME} && \
+    chmod -R ug+rw ${CELEBORN_HOME}
 
-COPY bin /opt/celeborn/bin
-COPY sbin /opt/celeborn/sbin
+COPY --chmod=a+x bin /opt/celeborn/bin
+COPY --chmod=a+x sbin /opt/celeborn/sbin
 COPY conf /opt/celeborn/conf
 COPY jars /opt/celeborn/jars
 COPY master-jars /opt/celeborn/master-jars
 COPY worker-jars /opt/celeborn/worker-jars
 COPY cli-jars /opt/celeborn/cli-jars
 COPY RELEASE /opt/celeborn/RELEASE
-
-RUN chown -R celeborn:celeborn ${CELEBORN_HOME} && \
-    chmod -R ug+rw ${CELEBORN_HOME} && \
-    chmod a+x ${CELEBORN_HOME}/bin/* && \
-    chmod a+x ${CELEBORN_HOME}/sbin/*
 
 USER celeborn
 WORKDIR /opt/celeborn

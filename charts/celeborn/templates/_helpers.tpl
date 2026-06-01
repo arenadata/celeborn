@@ -96,14 +96,14 @@ Create the name of the roleBinding to use
 {{- end }}
 {{- end }}
 
-{{/* Create the name of configmap to use. */}}
-{{- define "celeborn.configMap.name" -}}
+{{/* Create the name of secret to use. */}}
+{{- define "celeborn.secret.name" -}}
 {{ include "celeborn.fullname" . }}-conf
 {{- end -}}
 
-{{/* Checksum of the Celeborn ConfigMap for rollout triggers. */}}
+{{/* Checksum of the Celeborn Secret for rollout triggers. */}}
 {{- define "celeborn.configChecksum" -}}
-{{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
+{{ include (print .Template.BasePath "/secret.yaml") . | sha256sum }}
 {{- end -}}
 
 {{/*
