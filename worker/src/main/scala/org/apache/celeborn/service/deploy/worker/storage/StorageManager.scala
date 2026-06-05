@@ -458,7 +458,8 @@ final private[worker] class StorageManager(conf: CelebornConf, workerSource: Abs
       bucketName,
       conf.s3MultiplePartUploadMaxRetries,
       conf.s3MultiplePartUploadBaseDelay,
-      conf.s3MultiplePartUploadMaxBackoff)
+      conf.s3MultiplePartUploadMaxBackoff,
+      conf.s3MultiplePartUploadMinPartSize)
   }
 
   /**

@@ -57,6 +57,7 @@ license: |
 | celeborn.storage.s3.mpu.baseDelay | 100ms | false | S3 MPU base sleep time (milliseconds) for retryable exceptions. | 0.6.0 |  | 
 | celeborn.storage.s3.mpu.maxBackoff | 20s | false | S3 MPU max sleep time (milliseconds) for retryable exceptions. | 0.6.0 |  | 
 | celeborn.storage.s3.mpu.maxRetries | 5 | false | S3 MPU upload max retries. | 0.6.0 |  | 
+| celeborn.storage.s3.mpu.minPartSize | 5m | false | Minimum size of a non-final S3 multipart upload part. Smaller flushes (e.g. a small memory-tier eviction) are accumulated until they reach this size before being uploaded, since S3 rejects non-final parts below its 5 MiB minimum. Only lower this for S3-compatible stores that allow smaller parts. | 0.6.0 |  | 
 | celeborn.worker.activeConnection.max | &lt;undefined&gt; | false | If the number of active connections on a worker exceeds this configuration value, the worker will be marked as high-load in the heartbeat report, and the master will not include that node in the response of RequestSlots. | 0.3.1 |  | 
 | celeborn.worker.applicationRegistry.cache.size | 10000 | false | Cache size of the application registry on Workers. | 0.5.0 |  | 
 | celeborn.worker.bufferStream.threadsPerMountpoint | 8 | false | Threads count for read buffer per mount point. | 0.3.0 |  | 
