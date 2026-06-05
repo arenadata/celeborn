@@ -213,29 +213,44 @@ trait MiniClusterFeature extends Logging {
     val workers = new Array[Worker](workerNum)
     val flagUpdateLock = new ReentrantLock()
     val threads = (1 to workerNum).map { i =>
-      val worker = createWorker(workerConf)
+      // The first createWorker happens on the calling thread so Mockito's mockConstruction
+      // (which is thread-scoped in Mockito 4.x) can intercept the MasterClient construction
+      // inside `new Worker(...)`. Subsequent attempts (retries after a BindException etc.)
+      // construct on the worker starter thread, which is acceptable since no test mocks
+      // construction across retries.
+      var worker = createWorker(workerConf)
       val workerThread = new RunnerWrap({
         var workerStartRetry = 0
         var workerStarted = false
         while (!workerStarted) {
           try {
             flagUpdateLock.lock()
-            workers(i - 1) = worker
-            flagUpdateLock.unlock()
-            workerStarted = true
+            try {
+              workers(i - 1) = worker
+            } finally {
+              flagUpdateLock.unlock()
+            }
             worker.initialize()
+            workerStarted = true
           } catch {
             case ex: Exception =>
-              if (workers(i - 1) != null) {
-                workers(i - 1).shutdownGracefully()
+              // Use stop() rather than shutdownGracefully() so MetricsSystem and bound ports
+              // are released before the next attempt.
+              try {
+                worker.stop(CelebornExitKind.EXIT_IMMEDIATELY)
+              } catch {
+                case _: Throwable => // swallow cleanup errors
               }
-              workerStarted = false
               workerStartRetry += 1
               logError(s"cannot start worker $i, retrying: ", ex)
               if (workerStartRetry == maxRetries) {
                 logError(s"cannot start worker $i, reached to max retrying", ex)
                 throw ex
               }
+              TimeUnit.SECONDS.sleep(Math.pow(2, workerStartRetry).toLong)
+              // Worker#initialize is not idempotent (e.g. MetricsSystem.start fails the second
+              // time), so retry with a fresh Worker (and fresh ports).
+              worker = createWorker(workerConf)
           }
         }
       })
