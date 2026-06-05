@@ -41,11 +41,9 @@ master:
   - name: CELEBORN_MASTER_MEMORY
     value: 100m
   - name: CELEBORN_MASTER_JAVA_OPTS
-    value: -XX:-PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -Xloggc:gc-master.out -Dio.netty.leakDetectionLevel=advanced
+    value: -Dio.netty.leakDetectionLevel=advanced -Djava.net.preferIPv4Stack=true
   - name: CELEBORN_NO_DAEMONIZE
     value: "true"
-  - name: TZ
-    value: Asia/Shanghai
 
   # -- Volume mounts for Celeborn master containers.
   volumeMounts:
@@ -84,11 +82,9 @@ worker:
   - name: CELEBORN_WORKER_OFFHEAP_MEMORY
     value: 100m
   - name: CELEBORN_WORKER_JAVA_OPTS
-    value: -XX:-PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -Xloggc:gc-worker.out -Dio.netty.leakDetectionLevel=advanced
+    value: -Dio.netty.leakDetectionLevel=advanced -Djava.net.preferIPv4Stack=true
   - name: CELEBORN_NO_DAEMONIZE
     value: "true"
-  - name: TZ
-    value: Asia/Shanghai
 
   # -- Volume mounts for Celeborn worker containers.
   volumeMounts:
