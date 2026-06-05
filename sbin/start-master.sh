@@ -33,7 +33,10 @@ CELEBORN_JAVA_OPTS="$CELEBORN_JAVA_OPTS -Xmx$CELEBORN_MASTER_MEMORY"
 CELEBORN_JAVA_OPTS="$CELEBORN_JAVA_OPTS -Dio.netty.tryReflectionSetAccessible=true"
 CELEBORN_JAVA_OPTS="$CELEBORN_JAVA_OPTS -Dio.netty.allocator.type=pooled"
 CELEBORN_JAVA_OPTS="$CELEBORN_JAVA_OPTS -Dio.netty.handler.ssl.defaultEndpointVerificationAlgorithm=NONE"
-CELEBORN_JAVA_OPTS="$CELEBORN_JAVA_OPTS --illegal-access=warn"
+# --illegal-access was added in Java 9 and removed in Java 17; only set it where it is valid.
+if [[ "$JAVA_MAJOR_VERSION" =~ ^[0-9]+$ ]] && [ "$JAVA_MAJOR_VERSION" -ge 9 ] && [ "$JAVA_MAJOR_VERSION" -le 16 ]; then
+  CELEBORN_JAVA_OPTS="$CELEBORN_JAVA_OPTS --illegal-access=warn"
+fi
 CELEBORN_JAVA_OPTS="$CELEBORN_JAVA_OPTS --add-opens=java.base/java.lang=ALL-UNNAMED"
 CELEBORN_JAVA_OPTS="$CELEBORN_JAVA_OPTS --add-opens=java.base/java.lang.invoke=ALL-UNNAMED"
 CELEBORN_JAVA_OPTS="$CELEBORN_JAVA_OPTS --add-opens=java.base/java.lang.reflect=ALL-UNNAMED"

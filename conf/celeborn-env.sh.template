@@ -33,8 +33,8 @@
 # CELEBORN_MASTER_MEMORY=2g
 # CELEBORN_WORKER_MEMORY=2g
 # CELEBORN_WORKER_OFFHEAP_MEMORY=4g
-# CELEBORN_WORKER_JAVA_OPTS="-XX:-PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -Xloggc:gc-worker.out -Dio.netty.leakDetectionLevel=advanced"
-# CELEBORN_MASTER_JAVA_OPTS="-XX:-PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -Xloggc:gc-master.out -Dio.netty.leakDetectionLevel=advanced"
+# CELEBORN_WORKER_JAVA_OPTS="-Xlog:gc*:file=gc-worker.out:time,uptime,level,tags -Dio.netty.leakDetectionLevel=advanced"
+# CELEBORN_MASTER_JAVA_OPTS="-Xlog:gc*:file=gc-master.out:time,uptime,level,tags -Dio.netty.leakDetectionLevel=advanced"
 # CELEBORN_PID_DIR="$CELEBORN_HOME/pids"
 # CELEBORN_LOG_DIR="$CELEBORN_HOME/logs"
 # CELEBORN_SLEEP="5s"

@@ -52,6 +52,13 @@ else
 fi
 
 JAVA_VERSION=$("$JAVA" -version 2>&1 | awk -F '"' '/version/ {print $2}')
+# Extract the major Java version (e.g. 8, 11, 17) for version-specific JVM options.
+if [[ "$JAVA_VERSION" = 1.* ]]; then
+  JAVA_MAJOR_VERSION="${JAVA_VERSION#1.}"
+  export JAVA_MAJOR_VERSION="${JAVA_MAJOR_VERSION%%.*}"
+else
+  export JAVA_MAJOR_VERSION="${JAVA_VERSION%%.*}"
+fi
 if [[ "$JAVA_VERSION" = 1.8.* ]]; then
   # Find the java tools.jar when using Java 8
   if [ -f "${JAVA_HOME}/lib/tools.jar" ]; then

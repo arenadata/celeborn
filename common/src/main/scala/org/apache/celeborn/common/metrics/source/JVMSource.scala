@@ -87,6 +87,10 @@ class JVMSource(conf: CelebornConf, role: String) extends AbstractSource(conf, r
     })
 
   Seq(new ThreadStatesGaugeSet()).map(_.getMetrics.asScala.map {
+    // ThreadStatesGaugeSet exposes a non-numeric "deadlocks" gauge (a Set of deadlocked thread
+    // dumps) alongside the numeric "deadlock.count"; the metric sinks only accept numbers, so skip
+    // it to avoid a "value type ... is not a number" warning on every registration.
+    case (name: String, _) if name == "deadlocks" => ()
     case (name: String, metric: Gauge[_]) =>
       addGauge(MetricRegistry.name(JVM_METRIC_THREAD_PREFIX, name), metric)
     case (name, metric) => new IllegalArgumentException(s"Unknown metric type: $name: $metric")
