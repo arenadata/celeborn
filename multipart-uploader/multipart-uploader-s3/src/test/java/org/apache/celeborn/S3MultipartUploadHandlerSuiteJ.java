@@ -18,10 +18,13 @@
 package org.apache.celeborn;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.RawLocalFileSystem;
 import org.apache.hadoop.fs.s3a.AWSCredentialProviderList;
 import org.apache.hadoop.fs.s3a.Constants;
 import org.junit.Assert;
 import org.junit.Test;
+
+import org.apache.celeborn.S3MultipartUploadHandler.S3MultipartUploadHandlerSharedState;
 
 public class S3MultipartUploadHandlerSuiteJ {
 
@@ -39,9 +42,40 @@ public class S3MultipartUploadHandlerSuiteJ {
     Configuration conf = new Configuration();
     conf.set(
         Constants.AWS_CREDENTIALS_PROVIDER,
-        "com.amazonaws.auth.WebIdentityTokenCredentialsProvider");
+        "software.amazon.awssdk.auth.credentials.WebIdentityTokenFileCredentialsProvider");
     AWSCredentialProviderList providers =
         S3MultipartUploadHandler.getCredentialsProvider(null, conf);
-    Assert.assertEquals("WebIdentityTokenCredentialsProvider ", providers.listProviderNames());
+    Assert.assertEquals("WebIdentityTokenFileCredentialsProvider ", providers.listProviderNames());
+  }
+
+  @Test
+  public void testSharedStateBuildsClientWithChecksumAndMd5Config() throws Exception {
+    Configuration conf = new Configuration();
+    conf.set(Constants.AWS_REGION, "us-east-1");
+    conf.setBoolean(Constants.REQUEST_MD5_HEADER, true);
+    conf.setBoolean(Constants.CHECKSUM_GENERATION, false);
+    conf.setBoolean(Constants.CHECKSUM_VALIDATION, false);
+    conf.set(Constants.ENDPOINT, "http://localhost:9878");
+    conf.setBoolean(Constants.PATH_STYLE_ACCESS, true);
+    RawLocalFileSystem fs = new RawLocalFileSystem();
+    fs.setConf(conf);
+    try (S3MultipartUploadHandlerSharedState state =
+        new S3MultipartUploadHandlerSharedState(fs, "test-bucket", 5, 100, 20000)) {
+      Assert.assertNotNull(state);
+    }
+  }
+
+  @Test
+  public void testSharedStateFallsBackToDefaultRegionForCustomEndpoint() throws Exception {
+    Configuration conf = new Configuration();
+    // custom endpoint, but no fs.s3a.endpoint.region configured: must still build a client.
+    conf.set(Constants.ENDPOINT, "http://localhost:9878");
+    conf.setBoolean(Constants.PATH_STYLE_ACCESS, true);
+    RawLocalFileSystem fs = new RawLocalFileSystem();
+    fs.setConf(conf);
+    try (S3MultipartUploadHandlerSharedState state =
+        new S3MultipartUploadHandlerSharedState(fs, "test-bucket", 5, 100, 20000)) {
+      Assert.assertNotNull(state);
+    }
   }
 }
