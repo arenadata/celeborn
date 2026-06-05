@@ -196,6 +196,17 @@ Because the uploaded object is the in-order concatenation of parts, repartitioni
 the byte stream into different part boundaries is transparent to readers (which
 read by chunk-offset byte ranges, not by part).
 
+**Memory accounting.** Slow-path buffered bytes outlive the flush task's tracked
+`CompositeByteBuf` (which `Flusher.returnBuffer` releases from `MemoryManager`'s
+disk-buffer counter right after `putPart`), so without accounting they would be
+invisible to backpressure/eviction — and the slow path correlates with memory
+pressure (small evictions). The handler therefore takes two `IntConsumer` hooks
+(`acquireMemory`/`releaseMemory`) on its shared state, wired by the worker
+(`StorageManager` → `TierWriterHelper`) to `MemoryManager#incrementDiskBuffer` /
+`#releaseDiskBuffer`. It acquires when bytes enter the accumulation buffer and
+releases when a buffered part is uploaded; the fast path never touches them. The
+hooks default to no-ops (tests, non-worker use).
+
 ## 10. Build / verification
 
 Verified locally with **OpenJDK 17** (`JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64`;
