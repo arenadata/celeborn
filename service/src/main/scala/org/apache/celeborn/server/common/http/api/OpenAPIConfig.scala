@@ -17,6 +17,7 @@
 
 package org.apache.celeborn.server.common.http.api
 
+import org.glassfish.jersey.CommonProperties
 import org.glassfish.jersey.server.{ResourceConfig, ServerProperties}
 
 import org.apache.celeborn.server.common.Service
@@ -26,6 +27,10 @@ class OpenAPIConfig(serviceName: String) extends ResourceConfig {
   // does not look for a JAXBContext (absent since JDK 11 removed JAXB) and log a noisy
   // "JAXBContext implementation could not be found. WADL feature is disabled." warning at startup.
   property(ServerProperties.WADL_FEATURE_DISABLE, true)
+  // Likewise, the JSON-only API never serves javax.activation.DataSource bodies; disabling that
+  // default provider avoids the equally noisy "A class javax.activation.DataSource ... was not
+  // found" warning (JAF was removed from the JDK in Java 11 too).
+  property(CommonProperties.PROVIDER_DEFAULT_DISABLE, "DATASOURCE")
   packages(OpenAPIConfig.packages(serviceName): _*)
   register(classOf[CelebornOpenApiResource])
   register(classOf[CelebornScalaObjectMapper])
