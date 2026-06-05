@@ -17,6 +17,8 @@
 
 package org.apache.celeborn.service.deploy.worker.storage;
 
+import java.util.function.IntConsumer;
+
 import org.apache.hadoop.fs.FileSystem;
 
 import org.apache.celeborn.reflect.DynConstructors;
@@ -30,7 +32,9 @@ public class TierWriterHelper {
       int maxRetries,
       int baseDelay,
       int maxBackoff,
-      int minPartSize) {
+      int minPartSize,
+      IntConsumer acquireMemory,
+      IntConsumer releaseMemory) {
     return (AutoCloseable)
         DynConstructors.builder()
             .impl(
@@ -40,9 +44,19 @@ public class TierWriterHelper {
                 Integer.class,
                 Integer.class,
                 Integer.class,
-                Integer.class)
+                Integer.class,
+                IntConsumer.class,
+                IntConsumer.class)
             .build()
-            .newInstance(hadoopFs, bucketName, maxRetries, baseDelay, maxBackoff, minPartSize);
+            .newInstance(
+                hadoopFs,
+                bucketName,
+                maxRetries,
+                baseDelay,
+                maxBackoff,
+                minPartSize,
+                acquireMemory,
+                releaseMemory);
   }
 
   public static MultipartUploadHandler getS3MultipartUploadHandler(

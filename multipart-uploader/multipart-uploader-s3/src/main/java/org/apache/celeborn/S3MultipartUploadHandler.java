@@ -25,6 +25,7 @@ import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntConsumer;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -97,15 +98,32 @@ public class S3MultipartUploadHandler implements MultipartUploadHandler {
     private final int baseDelay;
     private final int maxBackoff;
     private final int minPartSize;
+    // Memory-accounting hooks for the slow-path accumulation buffer (see putPart). Wired by the
+    // worker to MemoryManager#incrementDiskBuffer / #releaseDiskBuffer so buffered-but-not-yet-
+    // uploaded bytes stay visible to backpressure/eviction. No-ops outside the worker (and in
+    // tests).
+    private final IntConsumer acquireMemory;
+    private final IntConsumer releaseMemory;
 
     /** Visible for testing: build a shared state around an already-created (e.g. mock) client. */
     S3MultipartUploadHandlerSharedState(S3Client s3Client, String bucketName) {
+      this(s3Client, bucketName, size -> {}, size -> {});
+    }
+
+    /** Visible for testing: as above, with memory-accounting hooks. */
+    S3MultipartUploadHandlerSharedState(
+        S3Client s3Client,
+        String bucketName,
+        IntConsumer acquireMemory,
+        IntConsumer releaseMemory) {
       this.s3Client = s3Client;
       this.bucketName = bucketName;
       this.s3MultiplePartUploadMaxRetries = 0;
       this.baseDelay = 0;
       this.maxBackoff = 0;
       this.minPartSize = DEFAULT_MIN_PART_SIZE;
+      this.acquireMemory = acquireMemory;
+      this.releaseMemory = releaseMemory;
     }
 
     public S3MultipartUploadHandlerSharedState(
@@ -114,13 +132,17 @@ public class S3MultipartUploadHandler implements MultipartUploadHandler {
         Integer s3MultiplePartUploadMaxRetries,
         Integer baseDelay,
         Integer maxBackoff,
-        Integer minPartSize)
+        Integer minPartSize,
+        IntConsumer acquireMemory,
+        IntConsumer releaseMemory)
         throws IOException, URISyntaxException {
       this.bucketName = bucketName;
       this.s3MultiplePartUploadMaxRetries = s3MultiplePartUploadMaxRetries;
       this.baseDelay = baseDelay;
       this.maxBackoff = maxBackoff;
       this.minPartSize = minPartSize;
+      this.acquireMemory = acquireMemory;
+      this.releaseMemory = releaseMemory;
       Configuration conf = hadoopFs.getConf();
       URI binding = new URI(String.format("s3a://%s", bucketName));
 
@@ -244,11 +266,18 @@ public class S3MultipartUploadHandler implements MultipartUploadHandler {
       }
       // Slow path: this is a sub-minimum non-final flush (e.g. a small memory-tier eviction).
       // Copy it into the accumulation buffer (the source buffer is released by the caller once this
-      // returns) and only upload once enough is buffered, or on the final flush.
+      // returns) and only upload once enough is buffered, or on the final flush. The copied bytes
+      // outlive this flush task's tracked buffer, so account for them so backpressure/eviction stay
+      // accurate; the matching release happens when the buffered part is uploaded.
+      int bufferedBefore = partBuffer.size();
       byte[] chunk = new byte[64 * 1024];
       int read;
       while ((read = inStream.read(chunk)) != -1) {
         partBuffer.write(chunk, 0, read);
+      }
+      int bufferedAdded = partBuffer.size() - bufferedBefore;
+      if (bufferedAdded > 0) {
+        sharedState.acquireMemory.accept(bufferedAdded);
       }
       if (finalFlush) {
         uploadBufferedPart(true);
@@ -273,6 +302,8 @@ public class S3MultipartUploadHandler implements MultipartUploadHandler {
     }
     uploadPart(RequestBody.fromBytes(partBuffer.toByteArray()), partSize, finalFlush);
     partBuffer.reset();
+    // Release the accounting acquired while these bytes were buffered (see putPart slow path).
+    sharedState.releaseMemory.accept(partSize);
   }
 
   private void uploadPart(RequestBody body, int partSize, boolean finalFlush) {
@@ -356,7 +387,16 @@ public class S3MultipartUploadHandler implements MultipartUploadHandler {
   }
 
   @Override
-  public void close() {}
+  public void close() {
+    // Release accounting for any bytes still buffered (e.g. the upload failed or was aborted before
+    // the buffered part was uploaded), so the disk-buffer counter does not leak. Idempotent: a
+    // successful complete() already drained and released, leaving nothing here.
+    int outstanding = partBuffer.size();
+    if (outstanding > 0) {
+      sharedState.releaseMemory.accept(outstanding);
+      partBuffer.reset();
+    }
+  }
 
   static AWSCredentialProviderList getCredentialsProvider(URI binding, Configuration conf)
       throws IOException {

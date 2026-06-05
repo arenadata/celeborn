@@ -459,7 +459,9 @@ final private[worker] class StorageManager(conf: CelebornConf, workerSource: Abs
       conf.s3MultiplePartUploadMaxRetries,
       conf.s3MultiplePartUploadBaseDelay,
       conf.s3MultiplePartUploadMaxBackoff,
-      conf.s3MultiplePartUploadMinPartSize)
+      conf.s3MultiplePartUploadMinPartSize,
+      (size: Int) => MemoryManager.instance().incrementDiskBuffer(size),
+      (size: Int) => MemoryManager.instance().releaseDiskBuffer(size))
   }
 
   /**
