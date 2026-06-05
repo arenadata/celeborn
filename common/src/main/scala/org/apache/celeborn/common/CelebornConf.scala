@@ -1255,6 +1255,7 @@ class CelebornConf(loadDefaults: Boolean) extends Cloneable with Logging with Se
   def s3MultiplePartUploadMaxRetries: Int = get(S3_MPU_MAX_RETRIES)
   def s3MultiplePartUploadBaseDelay: Int = get(S3_MPU_BASE_DELAY).toInt
   def s3MultiplePartUploadMaxBackoff: Int = get(S3_MPU_MAX_BACKOFF).toInt
+  def s3MultiplePartUploadMinPartSize: Int = get(S3_MPU_MIN_PART_SIZE).toInt
 
   def s3Dir: String = {
     get(S3_DIR).map {
@@ -3410,6 +3411,17 @@ object CelebornConf extends Logging {
       .doc("S3 MPU max sleep time (milliseconds) for retryable exceptions.")
       .timeConf(TimeUnit.MILLISECONDS)
       .createWithDefaultString("20s")
+
+  val S3_MPU_MIN_PART_SIZE: ConfigEntry[Long] =
+    buildConf("celeborn.storage.s3.mpu.minPartSize")
+      .categories("worker")
+      .version("0.6.0")
+      .doc("Minimum size of a non-final S3 multipart upload part. Smaller flushes (e.g. a " +
+        "small memory-tier eviction) are accumulated until they reach this size before being " +
+        "uploaded, since S3 rejects non-final parts below its 5 MiB minimum. Only lower this " +
+        "for S3-compatible stores that allow smaller parts.")
+      .bytesConf(ByteUnit.BYTE)
+      .createWithDefaultString("5m")
 
   val OSS_ENDPOINT: OptionalConfigEntry[String] =
     buildConf("celeborn.storage.oss.endpoint")

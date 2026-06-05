@@ -71,7 +71,7 @@ same hadoop `Configuration` keys, or it will break against Ozone s3g.
 | `ClientConfiguration` + `RetryPolicy`                        | `.overrideConfiguration(ClientOverrideConfiguration ... retryStrategy)`              |
 | `s3.shutdown()`                                              | `s3.close()`                                                                         |
 | `initiateMultipartUpload(req)` → `getUploadId()`             | `createMultipartUpload(req)` → `response.uploadId()`                                 |
-| `uploadPart(UploadPartRequest.with...InputStream/partSize)`  | `uploadPart(UploadPartRequest, RequestBody.fromInputStream(in, len))`                |
+| `uploadPart(UploadPartRequest.with...InputStream/partSize)`  | `uploadPart(UploadPartRequest, RequestBody.fromBytes(accumulated))` (see §9)         |
 | `listParts(req)` → `PartListing`/`PartSummary`               | `listParts(req)` → `ListPartsResponse`/`Part` (`.nextPartNumberMarker()`)            |
 | `PartETag(num, etag)`                                        | `CompletedPart.builder().partNumber(n).eTag(e).build()`                              |
 | `completeMultipartUpload(req with List<PartETag>)`           | `completeMultipartUpload(req with CompletedMultipartUpload.parts(...))`              |
@@ -156,7 +156,47 @@ Caveat: `isDebugEnabled()` is evaluated once, when the shared `S3Client` is buil
 (same as the checksum/md5/retry config). Flipping the log level at runtime
 afterwards will not add or remove the interceptor for the life of that client.
 
-## 9. Build / verification
+## 9. Minimum part size (S3 `EntityTooSmall`)
+
+S3 requires every multipart part **except the last** to be at least 5 MiB. Celeborn
+flushes do not guarantee this: a small memory-tier eviction is flushed as a
+*non-final* part (`TierWriter.evict` → `flush(false, …)`), and `writeInternal`
+flushes the buffered bytes before appending a large incoming push. Against a
+strict backend (real S3, Ozone s3g) this surfaces at `completeMultipartUpload` as
+`S3Exception: Your proposed upload is smaller than the minimum allowed object
+size … at least 5 MB`. (MinIO is typically lenient, which is why it can pass there.)
+
+This is a pre-existing Celeborn part-sizing characteristic, not specific to the
+SDK upgrade, but the handler is the right place to make it robust. A flush that is
+already a valid part (final, or at least `celeborn.storage.s3.mpu.minPartSize`,
+default 5 MiB) is streamed **straight to S3** — the common case, since the S3
+flusher buffer is ≥ the minimum, so it costs no extra heap. Only a sub-minimum
+non-final flush (e.g. a small memory-tier eviction) is **accumulated** in a buffer
+and uploaded once it reaches the minimum. (An earlier draft buffered *every* flush
+and copied it twice, which inflated worker heap and could OOM the flusher — the
+fast path avoids that.) Part numbers are assigned internally (one per uploaded
+part), decoupled from the `partNumber` passed to `putPart`.
+
+Internal numbering (rather than reusing the caller's `partNumber`) is safe because
+the worker invokes `putPart` **serially and in order** for a given key — all flush
+tasks of a file go to a single FIFO flusher thread (a fixed `Flusher` worker
+index) and `complete()` runs only after `waitOnNoPending` drains them — so call
+order matches data order. It is also *safer* than the caller's `partNumber`, which
+counts flushes and could exceed S3's 10000-part limit; the internal counter counts
+the (fewer) accumulated parts. Two safety points:
+
+- the **final** flush (`putPart(..., finalFlush=true)`) uploads whatever remains as
+  the last part (any size is allowed);
+- `complete()` first **drains** the buffer, because `TierWriter.finalFlush()` only
+  emits a final part when its own buffer is non-empty — otherwise a trailing
+  sub-5-MiB part (small eviction, no subsequent write) would never be uploaded
+  (data loss). Both paths are covered by unit tests.
+
+Because the uploaded object is the in-order concatenation of parts, repartitioning
+the byte stream into different part boundaries is transparent to readers (which
+read by chunk-offset byte ranges, not by part).
+
+## 10. Build / verification
 
 Verified locally with **OpenJDK 17** (`JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64`;
 the forked Error Prone compiler needs `JAVA_HOME` pointed at a JDK 17, otherwise it

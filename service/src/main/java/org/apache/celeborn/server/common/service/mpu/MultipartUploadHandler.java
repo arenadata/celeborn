@@ -27,11 +27,10 @@ public interface MultipartUploadHandler {
   /**
    * Upload a single part.
    *
-   * <p>The {@code inputStream} must be fully buffered: {@link InputStream#available()} has to
-   * return the complete part length, and the stream must support {@link InputStream#mark} /
-   * {@link InputStream#reset} so the underlying SDK can re-read it when a request is retried.
-   * Callers therefore pass a {@link java.io.ByteArrayInputStream}. The implementation closes the
-   * stream when done.
+   * <p>The {@code inputStream} is read in full and closed by the implementation; callers pass a
+   * {@link java.io.ByteArrayInputStream} and may release the backing buffer once this returns.
+   * {@code finalFlush} marks the last part of the upload — implementations may buffer earlier parts
+   * to satisfy backend minimum-part-size rules and only the final part may be undersized.
    */
   void putPart(InputStream inputStream, Integer partNumber, Boolean finalFlush) throws IOException;
 

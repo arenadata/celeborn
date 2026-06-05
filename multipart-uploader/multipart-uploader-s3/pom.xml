@@ -62,6 +62,11 @@
       <artifactId>s3-transfer-manager</artifactId>
       <version>${aws.java.sdk.v2.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
