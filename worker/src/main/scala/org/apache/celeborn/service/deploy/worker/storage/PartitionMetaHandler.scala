@@ -237,6 +237,12 @@ class MapPartitionMetaHandler(
           // map partition synchronously writes file index
           if (indexChannel != null) while (indexBuffer.hasRemaining) indexChannel.write(indexBuffer)
           else if (diskFileInfo.isDFS) {
+            // NOTE: this incremental index append is only used by MapPartition (Flink hybrid)
+            // shuffle. It relies on FileSystem#append, which append-less filesystems such as Apache
+            // Ozone ofs:// do not support, so Flink-on-Ozone is not yet supported here (Spark/reduce
+            // writes its index once via create() in DfsTierWriter#closeStreams and is unaffected).
+            // Supporting Flink on ofs:// would require keeping the index stream open or buffering and
+            // writing it once.
             val dfsStream = hadoopFs.append(diskFileInfo.getDfsIndexPath)
             val indexBytes = new Array[Byte](indexBuffer.remaining)
             indexBuffer.get(indexBytes)
