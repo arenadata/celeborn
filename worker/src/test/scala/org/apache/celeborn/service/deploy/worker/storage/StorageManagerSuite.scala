@@ -147,6 +147,34 @@ class StorageManagerSuite extends CelebornFunSuite with MockitoHelper {
     }
   }
 
+  test("decideHdfsAppendHandling covers append-less filesystem (e.g. Ozone ofs://)") {
+    import StorageManager.HdfsAppendDecision._
+    // Append supported: always proceed regardless of the reuse flag.
+    assert(StorageManager.decideHdfsAppendHandling(
+      reuseStreamEnabled = false,
+      appendSupported = true,
+      reuseExplicitlySet = false) == Proceed)
+    assert(StorageManager.decideHdfsAppendHandling(
+      reuseStreamEnabled = false,
+      appendSupported = true,
+      reuseExplicitlySet = true) == Proceed)
+    // Reuse already enabled: proceed even when append is unsupported.
+    assert(StorageManager.decideHdfsAppendHandling(
+      reuseStreamEnabled = true,
+      appendSupported = false,
+      reuseExplicitlySet = true) == Proceed)
+    // Append unsupported, reuse left at default: force it on.
+    assert(StorageManager.decideHdfsAppendHandling(
+      reuseStreamEnabled = false,
+      appendSupported = false,
+      reuseExplicitlySet = false) == ForceReuse)
+    // Append unsupported, reuse explicitly disabled: contradictory, fail fast.
+    assert(StorageManager.decideHdfsAppendHandling(
+      reuseStreamEnabled = false,
+      appendSupported = false,
+      reuseExplicitlySet = true) == FailFast)
+  }
+
   private def genPartitionLocation(epoch: Int, offsets: Array[Long]): PartitionLocation = {
     val location: PartitionLocation =
       new PartitionLocation(0, epoch, "localhost", 0, 0, 0, 0, PartitionLocation.Mode.PRIMARY)
