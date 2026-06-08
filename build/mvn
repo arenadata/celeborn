@@ -83,7 +83,13 @@ install_mvn() {
     local FILE_PATH="maven/maven-3/${MVN_VERSION}/binaries"
 
     if [ $(command -v curl) ]; then
-      if ! curl -L --output /dev/null --silent --head --fail "${APACHE_MIRROR}/${FILE_PATH}/${MVN_TARBALL}${MIRROR_URL_QUERY}" ; then
+      # Follow closer.lua's redirect to the chosen mirror and check it actually
+      # serves the tarball: a missing file or HTML error/picker page would be
+      # written over the tarball and break the extract. --max-time also keeps an
+      # unresponsive mirror from hanging the build (it then reports an empty type).
+      local content_type
+      content_type=$(curl -L --output /dev/null --silent --head --max-time 30 --write-out '%{content_type}' "${APACHE_MIRROR}/${FILE_PATH}/${MVN_TARBALL}${MIRROR_URL_QUERY}")
+      if [[ "$content_type" != application/* ]]; then
         # Fall back to archive.apache.org for older Maven
         echo "Falling back to archive.apache.org to download Maven"
         APACHE_MIRROR="https://archive.apache.org/dist"
