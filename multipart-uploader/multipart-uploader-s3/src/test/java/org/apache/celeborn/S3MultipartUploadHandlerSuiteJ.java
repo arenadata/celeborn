@@ -17,11 +17,30 @@
 
 package org.apache.celeborn;
 
+import java.io.ByteArrayInputStream;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.RawLocalFileSystem;
 import org.apache.hadoop.fs.s3a.AWSCredentialProviderList;
 import org.apache.hadoop.fs.s3a.Constants;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.CompleteMultipartUploadResponse;
+import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
+import software.amazon.awssdk.services.s3.model.ListPartsRequest;
+import software.amazon.awssdk.services.s3.model.ListPartsResponse;
+import software.amazon.awssdk.services.s3.model.Part;
+import software.amazon.awssdk.services.s3.model.UploadPartRequest;
+import software.amazon.awssdk.services.s3.model.UploadPartResponse;
+
+import org.apache.celeborn.S3MultipartUploadHandler.S3MultipartUploadHandlerSharedState;
 
 public class S3MultipartUploadHandlerSuiteJ {
 
@@ -39,9 +58,213 @@ public class S3MultipartUploadHandlerSuiteJ {
     Configuration conf = new Configuration();
     conf.set(
         Constants.AWS_CREDENTIALS_PROVIDER,
-        "com.amazonaws.auth.WebIdentityTokenCredentialsProvider");
+        "software.amazon.awssdk.auth.credentials.WebIdentityTokenFileCredentialsProvider");
     AWSCredentialProviderList providers =
         S3MultipartUploadHandler.getCredentialsProvider(null, conf);
-    Assert.assertEquals("WebIdentityTokenCredentialsProvider ", providers.listProviderNames());
+    Assert.assertEquals("WebIdentityTokenFileCredentialsProvider ", providers.listProviderNames());
+  }
+
+  @Test
+  public void testSharedStateBuildsClientWithChecksumAndMd5Config() throws Exception {
+    Configuration conf = new Configuration();
+    conf.set(Constants.AWS_REGION, "us-east-1");
+    conf.setBoolean(Constants.REQUEST_MD5_HEADER, true);
+    conf.setBoolean(Constants.CHECKSUM_GENERATION, false);
+    conf.setBoolean(Constants.CHECKSUM_VALIDATION, false);
+    conf.set(Constants.ENDPOINT, "http://localhost:9878");
+    conf.setBoolean(Constants.PATH_STYLE_ACCESS, true);
+    RawLocalFileSystem fs = new RawLocalFileSystem();
+    fs.setConf(conf);
+    try (S3MultipartUploadHandlerSharedState state =
+        new S3MultipartUploadHandlerSharedState(
+            fs, "test-bucket", 5, 100, 20000, 5 * 1024 * 1024, size -> {}, size -> {})) {
+      Assert.assertNotNull(state);
+    }
+  }
+
+  @Test
+  public void testSharedStateFallsBackToDefaultRegionForCustomEndpoint() throws Exception {
+    Configuration conf = new Configuration();
+    // custom endpoint, but no fs.s3a.endpoint.region configured: must still build a client.
+    conf.set(Constants.ENDPOINT, "http://localhost:9878");
+    conf.setBoolean(Constants.PATH_STYLE_ACCESS, true);
+    RawLocalFileSystem fs = new RawLocalFileSystem();
+    fs.setConf(conf);
+    try (S3MultipartUploadHandlerSharedState state =
+        new S3MultipartUploadHandlerSharedState(
+            fs, "test-bucket", 5, 100, 20000, 5 * 1024 * 1024, size -> {}, size -> {})) {
+      Assert.assertNotNull(state);
+    }
+  }
+
+  private static ByteArrayInputStream zeros(int size) {
+    return new ByteArrayInputStream(new byte[size]);
+  }
+
+  @Test
+  public void testPutPartAccumulatesSmallPartsToMeetMinPartSize() throws Exception {
+    int mib = 1024 * 1024;
+    S3Client client = Mockito.mock(S3Client.class);
+    Mockito.when(client.createMultipartUpload(Mockito.any(CreateMultipartUploadRequest.class)))
+        .thenReturn(CreateMultipartUploadResponse.builder().uploadId("upload-1").build());
+    Mockito.when(
+            client.uploadPart(Mockito.any(UploadPartRequest.class), Mockito.any(RequestBody.class)))
+        .thenReturn(UploadPartResponse.builder().eTag("etag").build());
+
+    S3MultipartUploadHandlerSharedState state =
+        new S3MultipartUploadHandlerSharedState(client, "test-bucket");
+    S3MultipartUploadHandler handler = new S3MultipartUploadHandler(state, "key");
+    handler.startUpload();
+
+    // Two 2 MiB non-final flushes: buffered (4 MiB < 5 MiB), nothing uploaded yet.
+    handler.putPart(zeros(2 * mib), 1, false);
+    handler.putPart(zeros(2 * mib), 2, false);
+    Mockito.verify(client, Mockito.never())
+        .uploadPart(Mockito.any(UploadPartRequest.class), Mockito.any(RequestBody.class));
+
+    // Third 2 MiB non-final flush: buffer reaches 6 MiB >= 5 MiB -> one 6 MiB part is uploaded.
+    handler.putPart(zeros(2 * mib), 3, false);
+    ArgumentCaptor<UploadPartRequest> captor = ArgumentCaptor.forClass(UploadPartRequest.class);
+    Mockito.verify(client, Mockito.times(1))
+        .uploadPart(captor.capture(), Mockito.any(RequestBody.class));
+    Assert.assertEquals(6L * mib, captor.getValue().contentLength().longValue());
+    Assert.assertEquals(1, captor.getValue().partNumber().intValue());
+
+    // Final flush of 1 MiB: uploaded as the last part regardless of size.
+    handler.putPart(zeros(mib), 4, true);
+    Mockito.verify(client, Mockito.times(2))
+        .uploadPart(Mockito.any(UploadPartRequest.class), Mockito.any(RequestBody.class));
+  }
+
+  @Test
+  public void testCompleteUploadsRemainingBufferedDataWhenNoFinalFlush() throws Exception {
+    int mib = 1024 * 1024;
+    S3Client client = Mockito.mock(S3Client.class);
+    Mockito.when(client.createMultipartUpload(Mockito.any(CreateMultipartUploadRequest.class)))
+        .thenReturn(CreateMultipartUploadResponse.builder().uploadId("upload-1").build());
+    Mockito.when(
+            client.uploadPart(Mockito.any(UploadPartRequest.class), Mockito.any(RequestBody.class)))
+        .thenReturn(UploadPartResponse.builder().eTag("etag").build());
+    Mockito.when(client.listParts(Mockito.any(ListPartsRequest.class)))
+        .thenReturn(
+            ListPartsResponse.builder()
+                .parts(Part.builder().partNumber(1).eTag("etag").build())
+                .isTruncated(false)
+                .build());
+    Mockito.when(client.completeMultipartUpload(Mockito.any(CompleteMultipartUploadRequest.class)))
+        .thenReturn(CompleteMultipartUploadResponse.builder().location("loc").build());
+
+    S3MultipartUploadHandlerSharedState state =
+        new S3MultipartUploadHandlerSharedState(client, "test-bucket");
+    S3MultipartUploadHandler handler = new S3MultipartUploadHandler(state, "key");
+    handler.startUpload();
+
+    // A single small non-final flush (2 MiB): buffered, not yet uploaded.
+    handler.putPart(zeros(2 * mib), 1, false);
+    Mockito.verify(client, Mockito.never())
+        .uploadPart(Mockito.any(UploadPartRequest.class), Mockito.any(RequestBody.class));
+
+    // complete() with no finalFlush=true call must still drain and upload the buffered 2 MiB.
+    handler.complete();
+    ArgumentCaptor<UploadPartRequest> captor = ArgumentCaptor.forClass(UploadPartRequest.class);
+    Mockito.verify(client, Mockito.times(1))
+        .uploadPart(captor.capture(), Mockito.any(RequestBody.class));
+    Assert.assertEquals(2L * mib, captor.getValue().contentLength().longValue());
+    Mockito.verify(client, Mockito.times(1))
+        .completeMultipartUpload(Mockito.any(CompleteMultipartUploadRequest.class));
+  }
+
+  @Test
+  public void testPutPartUploadsLargePartDirectlyWithoutBuffering() throws Exception {
+    int mib = 1024 * 1024;
+    S3Client client = Mockito.mock(S3Client.class);
+    Mockito.when(client.createMultipartUpload(Mockito.any(CreateMultipartUploadRequest.class)))
+        .thenReturn(CreateMultipartUploadResponse.builder().uploadId("upload-1").build());
+    Mockito.when(
+            client.uploadPart(Mockito.any(UploadPartRequest.class), Mockito.any(RequestBody.class)))
+        .thenReturn(UploadPartResponse.builder().eTag("etag").build());
+
+    S3MultipartUploadHandlerSharedState state =
+        new S3MultipartUploadHandlerSharedState(client, "test-bucket");
+    S3MultipartUploadHandler handler = new S3MultipartUploadHandler(state, "key");
+    handler.startUpload();
+
+    // A single 6 MiB non-final flush is already a valid part, so it is uploaded immediately
+    // (fast path) rather than copied through the accumulation buffer.
+    handler.putPart(zeros(6 * mib), 1, false);
+    ArgumentCaptor<UploadPartRequest> captor = ArgumentCaptor.forClass(UploadPartRequest.class);
+    Mockito.verify(client, Mockito.times(1))
+        .uploadPart(captor.capture(), Mockito.any(RequestBody.class));
+    Assert.assertEquals(6L * mib, captor.getValue().contentLength().longValue());
+  }
+
+  @Test
+  public void testSlowPathAccumulationIsMemoryAccounted() throws Exception {
+    int mib = 1024 * 1024;
+    S3Client client = Mockito.mock(S3Client.class);
+    Mockito.when(client.createMultipartUpload(Mockito.any(CreateMultipartUploadRequest.class)))
+        .thenReturn(CreateMultipartUploadResponse.builder().uploadId("upload-1").build());
+    Mockito.when(
+            client.uploadPart(Mockito.any(UploadPartRequest.class), Mockito.any(RequestBody.class)))
+        .thenReturn(UploadPartResponse.builder().eTag("etag").build());
+
+    AtomicInteger accounted = new AtomicInteger(0);
+    S3MultipartUploadHandlerSharedState state =
+        new S3MultipartUploadHandlerSharedState(
+            client, "test-bucket", accounted::addAndGet, size -> accounted.addAndGet(-size));
+    S3MultipartUploadHandler handler = new S3MultipartUploadHandler(state, "key");
+    handler.startUpload();
+
+    // Two 2 MiB sub-minimum flushes are buffered: their bytes must be accounted as held.
+    handler.putPart(zeros(2 * mib), 1, false);
+    handler.putPart(zeros(2 * mib), 2, false);
+    Assert.assertEquals(4 * mib, accounted.get());
+
+    // A third 2 MiB flush crosses the 5 MiB threshold and uploads the 6 MiB part: accounting
+    // clears.
+    handler.putPart(zeros(2 * mib), 3, false);
+    Assert.assertEquals(0, accounted.get());
+
+    // A large flush takes the fast path and is never accounted (streamed directly).
+    handler.putPart(zeros(6 * mib), 4, false);
+    Assert.assertEquals(0, accounted.get());
+  }
+
+  @Test
+  public void testCloseReleasesOutstandingMemoryAccounting() throws Exception {
+    int mib = 1024 * 1024;
+    S3Client client = Mockito.mock(S3Client.class);
+    Mockito.when(client.createMultipartUpload(Mockito.any(CreateMultipartUploadRequest.class)))
+        .thenReturn(CreateMultipartUploadResponse.builder().uploadId("upload-1").build());
+
+    AtomicInteger accounted = new AtomicInteger(0);
+    S3MultipartUploadHandlerSharedState state =
+        new S3MultipartUploadHandlerSharedState(
+            client, "test-bucket", accounted::addAndGet, size -> accounted.addAndGet(-size));
+    S3MultipartUploadHandler handler = new S3MultipartUploadHandler(state, "key");
+    handler.startUpload();
+
+    // Buffer a sub-minimum flush, then close without completing (abort/failure path).
+    handler.putPart(zeros(2 * mib), 1, false);
+    Assert.assertEquals(2 * mib, accounted.get());
+    handler.close();
+    Assert.assertEquals(0, accounted.get());
+  }
+
+  @Test
+  public void testPutPartRejectsOutOfOrderPartNumbers() throws Exception {
+    int mib = 1024 * 1024;
+    S3Client client = Mockito.mock(S3Client.class);
+    Mockito.when(client.createMultipartUpload(Mockito.any(CreateMultipartUploadRequest.class)))
+        .thenReturn(CreateMultipartUploadResponse.builder().uploadId("upload-1").build());
+
+    S3MultipartUploadHandlerSharedState state =
+        new S3MultipartUploadHandlerSharedState(client, "test-bucket");
+    S3MultipartUploadHandler handler = new S3MultipartUploadHandler(state, "key");
+    handler.startUpload();
+
+    handler.putPart(zeros(mib), 2, false);
+    // A lower (or equal) part number signals out-of-order/concurrent invocation and must fail fast.
+    Assert.assertThrows(IllegalStateException.class, () -> handler.putPart(zeros(mib), 1, false));
   }
 }

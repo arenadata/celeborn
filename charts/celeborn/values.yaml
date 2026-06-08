@@ -44,6 +44,7 @@ imagePullSecrets: []
 # -- Celeborn configurations.
 # Ref: [Configuration - Apache Celeborn](https://celeborn.apache.org/docs/latest/configuration).
 celeborn:
+  celeborn.storage.availableTypes: MEMORY
   # ============================================================================
   # Mater
   # ============================================================================
@@ -71,7 +72,7 @@ celeborn:
   celeborn.worker.http.port: 9096
   celeborn.worker.monitor.disk.enabled: false
   celeborn.worker.push.io.threads: 32
-  celeborn.worker.storage.dirs: /mnt/disk1:disktype=SSD:capacity=100Gi,/mnt/disk2:disktype=SSD:capacity=100Gi,/mnt/disk3:disktype=SSD:capacity=100Gi,/mnt/disk4:disktype=SSD:capacity=100Gi
+  # celeborn.worker.storage.dirs: /mnt/disk1:disktype=SSD:capacity=100Gi
 
   # ============================================================================
   # Client
@@ -98,19 +99,21 @@ master:
 
   # -- Annotations for Celeborn master pods.
   annotations:
-    # key1: value1
-    # key2: value2
+  # key1: value1
+  # key2: value2
 
   # -- Environment variables for Celeborn master containers.
   env:
-  - name: CELEBORN_MASTER_MEMORY
-    value: 2g
-  - name: CELEBORN_MASTER_JAVA_OPTS
-    value: -XX:-PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -Xloggc:gc-master.out -Dio.netty.leakDetectionLevel=advanced
-  - name: CELEBORN_NO_DAEMONIZE
-    value: "true"
-  - name: TZ
-    value: Asia/Shanghai
+    - name: CELEBORN_MASTER_MEMORY
+      value: 512Mi
+    - name: CELEBORN_MASTER_JAVA_OPTS
+      value: -Dio.netty.leakDetectionLevel=advanced -Djava.net.preferIPv4Stack=true
+    - name: CELEBORN_NO_DAEMONIZE
+      value: "true"
+    - name: CELEBORN_PID_DIR
+      value: /tmp/pids
+    - name: CELEBORN_LOG_DIR
+      value: /tmp/logs
 
   # -- Environment variable sources for Celeborn master containers.
   envFrom:
@@ -123,53 +126,58 @@ master:
 
   # -- Volume mounts for Celeborn master containers.
   volumeMounts:
-  - name: celeborn-ratis
-    mountPath: /mnt/celeborn_ratis
+    - name: celeborn-ratis
+      mountPath: /mnt/celeborn_ratis
+    - name: celeborn-tmp
+      mountPath: /tmp
 
   # -- Resources for Celeborn master containers.
   resources:
-    # requests:
-    #   cpu: 100m
-    #   memory: 128Mi
-    # limits:
-    #   cpu: 100m
-    #   memory: 128Mi
+    requests:
+      cpu: 500m
+      memory: 1g
+    limits:
+      cpu: 500m
+      memory: 1g
 
   # -- Security configurations for Celeborn master containers.
   securityContext:
-    # privileged: false
-    # allowPrivilegeEscalation: false
-    # runAsUser: 10006
-    # runAsGroup: 10006
-    # fsGroup: 10006
+    privileged: false
+    allowPrivilegeEscalation: false
+    runAsUser: 10006
+    runAsGroup: 10006
+    fsGroup: 10006
+    readOnlyRootFilesystem: true
 
   # -- Volumes for Celeborn master pods.
   volumes:
-  - name: celeborn-ratis
-    hostPath:
-      type: DirectoryOrCreate
-      path: /mnt/celeborn_ratis
+    - name: celeborn-ratis
+      emptyDir:
+        sizeLimit: 1Gi
+    - name: celeborn-tmp
+      emptyDir:
+        sizeLimit: 100Mi
 
   # -- Node selector for Celeborn master pods.
   nodeSelector:
-    # key1: value1
-    # key2: value2
+  # key1: value1
+  # key2: value2
 
   # -- Affinity for Celeborn master pods.
   affinity:
     podAntiAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
-      - labelSelector:
-          matchExpressions:
-          - key: app.kubernetes.io/name
-            operator: In
-            values:
-            - celeborn
-          - key: app.kubernetes.io/role
-            operator: In
-            values:
-            - master
-        topologyKey: kubernetes.io/hostname
+        - labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - celeborn
+              - key: app.kubernetes.io/role
+                operator: In
+                values:
+                  - master
+          topologyKey: kubernetes.io/hostname
 
   # -- Tolerations for Celeborn master pods.
   tolerations:
@@ -204,6 +212,8 @@ master:
     runAsGroup: 10006
     # The group ID to use when modifying the ownership and permissions of the mounted volumes.
     fsGroup: 10006
+    # Only change permissions and ownership if the permission and the ownership of root directory does not match with expected permissions of the volume
+    fsGroupChangePolicy: "OnRootMismatch"
 
   # -- Volume claim templates for Celeborn master statefulset.
   volumeClaimTemplates:
@@ -218,6 +228,9 @@ master:
   #       limits:
   #         storage: 100Gi
 
+  # -- Enable init container for PVC chmod
+  pvcInitContainerEnabled: false
+
 worker:
   # -- Number of Celeborn worker replicas to deploy, should less than node number.
   replicas: 5
@@ -227,21 +240,23 @@ worker:
 
   # -- Annotations for Celeborn worker pods.
   annotations:
-    # key1: value1
-    # key2: value2
+  # key1: value1
+  # key2: value2
 
   # -- Environment variables for Celeborn worker containers.
   env:
-  - name: CELEBORN_WORKER_MEMORY
-    value: 2g
-  - name: CELEBORN_WORKER_OFFHEAP_MEMORY
-    value: 12g
-  - name: CELEBORN_WORKER_JAVA_OPTS
-    value: -XX:-PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -Xloggc:gc-worker.out -Dio.netty.leakDetectionLevel=advanced
-  - name: CELEBORN_NO_DAEMONIZE
-    value: "true"
-  - name: TZ
-    value: Asia/Shanghai
+    - name: CELEBORN_WORKER_MEMORY
+      value: 512m
+    - name: CELEBORN_WORKER_OFFHEAP_MEMORY
+      value: 1g
+    - name: CELEBORN_WORKER_JAVA_OPTS
+      value: -Dio.netty.leakDetectionLevel=advanced -Djava.net.preferIPv4Stack=true
+    - name: CELEBORN_NO_DAEMONIZE
+      value: "true"
+    - name: CELEBORN_PID_DIR
+      value: /tmp/pids
+    - name: CELEBORN_LOG_DIR
+      value: /tmp/logs
 
   # -- Environment variable sources for Celeborn worker containers.
   envFrom:
@@ -254,74 +269,56 @@ worker:
 
   # -- Volume mounts for Celeborn worker containers.
   volumeMounts:
-  - name: disk1
-    mountPath: /mnt/disk1
-  - name: disk2
-    mountPath: /mnt/disk2
-  - name: disk3
-    mountPath: /mnt/disk3
-  - name: disk4
-    mountPath: /mnt/disk4
+    - name: celeborn-tmp
+      mountPath: /tmp
 
   # -- Resources for Celeborn worker containers.
   resources:
-    # requests:
-    #   cpu: 100m
-    #   memory: 128Mi
-    # limits:
-    #   cpu: 100m
-    #   memory: 128Mi
+    requests:
+      cpu: 500m
+      memory: 2g
+    limits:
+      cpu: 500m
+      memory: 2g
 
   # -- Security configurations for Celeborn worker containers.
   securityContext:
-    # privileged: false
-    # allowPrivilegeEscalation: false
-    # runAsUser: 10006
-    # runAsGroup: 10006
-    # fsGroup: 10006
+    privileged: false
+    allowPrivilegeEscalation: false
+    runAsUser: 10006
+    runAsGroup: 10006
+    fsGroup: 10006
+    readOnlyRootFilesystem: true
 
   # Add additional init containers into workers (templated).
   extraInitContainers: []
 
   # --Volumes for Celeborn worker pods.
   volumes:
-  - name: disk1
-    hostPath:
-      type: DirectoryOrCreate
-      path: /mnt/disk1
-  - name: disk2
-    hostPath:
-      type: DirectoryOrCreate
-      path: /mnt/disk2
-  - name: disk3
-    hostPath:
-      type: DirectoryOrCreate
-      path: /mnt/disk3
-  - name: disk4
-    hostPath:
-      type: DirectoryOrCreate
-      path: /mnt/disk4
+    - name: celeborn-tmp
+      emptyDir:
+        sizeLimit: 100Mi
 
   # -- Node selector for Celeborn worker pods.
   nodeSelector:
-    # key1: value1
-    # key2: value2
+  # key1: value1
+  # key2: value2
 
   # -- Affinity for Celeborn worker pods.
   affinity:
     podAntiAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
-      - labelSelector:
-          matchExpressions:
-          - key: app.kubernetes.io/name
-            operator: In
-            values:
-            - celeborn
-          - key: app.kubernetes.io/role
-            operator: In
-            values:
-            - worker
-        topologyKey: kubernetes.io/hostname
+        - labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - celeborn
+              - key: app.kubernetes.io/role
+                operator: In
+                values:
+                  - worker
+          topologyKey: kubernetes.io/hostname
 
   # -- Tolerations for Celeborn worker pods.
   tolerations:
@@ -400,6 +397,9 @@ worker:
   #       limits:
   #         storage: 100Gi
 
+  # -- Enable init container for PVC chmod
+  pvcInitContainerEnabled: false
+
 serviceAccount:
   # -- Whether to create a service account for Celeborn.
   create: false
@@ -409,13 +409,13 @@ serviceAccount:
   annotations: {}
 
 rbac:
-  create: true
+  create: false
   roleName: default
   roleBindingName: default
   rules:
-  - apiGroups: [""]
-    resources: ["pods"]
-    verbs: ["create", "list", "delete"]
+    - apiGroups: [""]
+      resources: ["pods"]
+      verbs: ["create", "list", "delete"]
 
 service:
   # -- Specifies service type
@@ -441,7 +441,7 @@ cluster:
 
 podMonitor:
   # -- Specifies whether to enable creating pod monitors for Celeborn pods
-  enable: true
+  enable: false
   # -- Specifies pod metrics endpoint
   podMetricsEndpoint:
     # Specifies scheme

@@ -24,6 +24,14 @@ public interface MultipartUploadHandler {
 
   void startUpload();
 
+  /**
+   * Upload a single part.
+   *
+   * <p>The {@code inputStream} is read in full and closed by the implementation; callers pass a
+   * {@link java.io.ByteArrayInputStream} and may release the backing buffer once this returns.
+   * {@code finalFlush} marks the last part of the upload — implementations may buffer earlier parts
+   * to satisfy backend minimum-part-size rules and only the final part may be undersized.
+   */
   void putPart(InputStream inputStream, Integer partNumber, Boolean finalFlush) throws IOException;
 
   void complete();

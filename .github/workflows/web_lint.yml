@@ -22,10 +22,12 @@ on:
     branches:
       - main
       - branch-*
+      - develop/**
   pull_request:
     branches:
       - main
       - branch-*
+      - develop/**
 
 concurrency:
   group: style-web-${{ github.head_ref || github.run_id }}

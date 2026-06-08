@@ -847,9 +847,8 @@ class PbSerDeUtilsTest extends CelebornFunSuite {
     val fromTransportHeartbeatFromApplicationResponse = ControlMessages.fromTransportMessage(
       new TransportMessage(MessageType.HEARTBEAT_FROM_APPLICATION_RESPONSE, payload))
       .asInstanceOf[HeartbeatFromApplicationResponse]
-    assert(
-      fromTransportHeartbeatFromApplicationResponse.checkQuotaResponse.isAvailable.equals(true))
-    assert(fromTransportHeartbeatFromApplicationResponse.checkQuotaResponse.reason.equals(""))
+    assert(fromTransportHeartbeatFromApplicationResponse.checkQuotaResponse.isAvailable)
+    assert(fromTransportHeartbeatFromApplicationResponse.checkQuotaResponse.reason.isEmpty)
   }
 
   def mockWorkers(host: String): Array[WorkerInfo] = {

@@ -54,13 +54,13 @@ spec:
       {{- end }}
       {{- end }}
       {{- end }}
-      {{- if or .Values.worker.extraInitContainers $paths }}
+      {{- if or .Values.worker.extraInitContainers (and .Values.worker.pvcInitContainerEnabled $paths) }}
       initContainers:
       {{- end }}
       {{- with .Values.worker.extraInitContainers }}
       {{- toYaml . | nindent 6 }}
       {{- end }}
-      {{- if $paths }}
+      {{- if and .Values.worker.pvcInitContainerEnabled $paths }}
       - name: chown-celeborn-worker-volume
         image: {{ include "celeborn.image" . }}
         {{- with .Values.image.pullPolicy }}
@@ -143,8 +143,8 @@ spec:
       {{- end }}
       volumes:
       - name: celeborn-conf
-        configMap:
-          name: {{ include "celeborn.configMap.name" . }}
+        secret:
+          secretName: {{ include "celeborn.secret.name" . }}
           defaultMode: 0444
           items:
           - key: celeborn-defaults.conf

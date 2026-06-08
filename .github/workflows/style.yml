@@ -22,10 +22,12 @@ on:
     branches:
       - main
       - branch-*
+      - develop/**
   pull_request:
     branches:
       - main
       - branch-*
+      - develop/**
 
 concurrency:
   group: style-${{ github.head_ref || github.run_id }}
@@ -46,6 +48,9 @@ jobs:
           java-version: 8
           cache: 'maven'
           check-latest: false
+          server-id: arenadata
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
       - run: |
           build/mvn spotless:check -Pgoogle-mirror,flink-1.16
           build/mvn spotless:check -Pgoogle-mirror,flink-1.17
@@ -57,4 +62,9 @@ jobs:
           build/mvn spotless:check -Pgoogle-mirror,flink-2.2
           build/mvn spotless:check -Pgoogle-mirror,spark-2.4
           build/mvn spotless:check -Pgoogle-mirror,spark-3.3
+          build/mvn spotless:check -Pgoogle-mirror,spark-3.5
+          build/mvn spotless:check -Pgoogle-mirror,spark-4.2
           build/mvn spotless:check -Pgoogle-mirror,mr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USERNAME: ${{ github.actor }}

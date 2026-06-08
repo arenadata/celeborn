@@ -42,15 +42,17 @@ class S3TieredStorageTest extends AnyFunSuite
     container.start()
 
     // create bucket using Minio command line tool
-    container.execInContainer(
+    var r = container.execInContainer(
       "mc",
       "alias",
       "set",
       "dockerminio",
-      "http://minio:9000",
+      "http://localhost:9000",
       container.getUserName,
       container.getPassword)
-    container.execInContainer("mc", "mb", "dockerminio/sample-bucket")
+    assert(r.getExitCode == 0, r.getStderr)
+    r = container.execInContainer("mc", "mb", "dockerminio/sample-bucket")
+    assert(r.getExitCode == 0, r.getStderr)
 
     System.setProperty("aws.accessKeyId", container.getUserName)
     System.setProperty("aws.secretKey", container.getPassword)

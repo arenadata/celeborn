@@ -54,7 +54,7 @@ spec:
       {{- end }}
       {{- end }}
       {{- end }}
-      {{- if $paths }}
+      {{- if and .Values.master.pvcInitContainerEnabled $paths }}
       initContainers:
       - name: chown-celeborn-master-volume
         image: {{ include "celeborn.image" . }}
@@ -142,8 +142,8 @@ spec:
       {{- end }}
       volumes:
       - name: celeborn-conf
-        configMap:
-          name: {{ include "celeborn.configMap.name" . }}
+        secret:
+          secretName: {{ include "celeborn.secret.name" . }}
           defaultMode: 0444
           items:
           - key: celeborn-defaults.conf

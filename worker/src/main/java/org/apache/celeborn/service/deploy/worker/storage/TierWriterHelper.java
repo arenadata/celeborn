@@ -17,6 +17,8 @@
 
 package org.apache.celeborn.service.deploy.worker.storage;
 
+import java.util.function.IntConsumer;
+
 import org.apache.hadoop.fs.FileSystem;
 
 import org.apache.celeborn.reflect.DynConstructors;
@@ -25,7 +27,14 @@ import org.apache.celeborn.server.common.service.mpu.MultipartUploadHandler;
 public class TierWriterHelper {
 
   public static AutoCloseable getS3MultipartUploadHandlerSharedState(
-      FileSystem hadoopFs, String bucketName, int maxRetryies, int baseDelay, int maxBackoff) {
+      FileSystem hadoopFs,
+      String bucketName,
+      int maxRetries,
+      int baseDelay,
+      int maxBackoff,
+      int minPartSize,
+      IntConsumer acquireMemory,
+      IntConsumer releaseMemory) {
     return (AutoCloseable)
         DynConstructors.builder()
             .impl(
@@ -34,9 +43,20 @@ public class TierWriterHelper {
                 String.class,
                 Integer.class,
                 Integer.class,
-                Integer.class)
+                Integer.class,
+                Integer.class,
+                IntConsumer.class,
+                IntConsumer.class)
             .build()
-            .newInstance(hadoopFs, bucketName, maxRetryies, baseDelay, maxBackoff);
+            .newInstance(
+                hadoopFs,
+                bucketName,
+                maxRetries,
+                baseDelay,
+                maxBackoff,
+                minPartSize,
+                acquireMemory,
+                releaseMemory);
   }
 
   public static MultipartUploadHandler getS3MultipartUploadHandler(
