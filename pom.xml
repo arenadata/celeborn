@@ -71,6 +71,7 @@
 
     <!-- use hadoop-3 as default  -->
     <hadoop.version>3.4.3.1-4.3.0-1</hadoop.version>
+    <ozone.version>2.1.0.1-4.3.0-1</ozone.version>
     <aws.java.sdk.v2.version>2.35.4</aws.java.sdk.v2.version>
     <aliyun-sdk-oss.version>3.13.0</aliyun-sdk-oss.version>
     <!--

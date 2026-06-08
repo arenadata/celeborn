@@ -91,7 +91,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USERNAME: ${{ github.actor }}
         run:
-          ./build/make-distribution.sh -Pspark-3.5 -Pjdk-17 -Pgoogle-mirror
+          ./build/make-distribution.sh -Pozone -Pjdk-17 -Pgoogle-mirror
       - name: Build Celeborn Docker Image
         run: docker build -f ./docker/Dockerfile -t apache/celeborn:latest ./dist
       - name: Setup Minikube
@@ -110,8 +110,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_USERNAME: ${{ github.actor }}
         run: >-
-          ./build/mvn clean install 
-          -Pkubernetes-it 
+          ./build/mvn install 
+          -Pkubernetes-it
           -Pjdk-17
           -Pspark-3.5
           -Dtest=none 
