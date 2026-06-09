@@ -32,7 +32,7 @@ import scala.concurrent.duration._
 import com.google.common.annotations.VisibleForTesting
 import io.netty.buffer.ByteBufAllocator
 import org.apache.commons.io.FileUtils
-import org.apache.hadoop.fs.{FileSystem, Path}
+import org.apache.hadoop.fs.{CommonPathCapabilities, FileSystem, Path}
 import org.apache.hadoop.fs.permission.FsPermission
 
 import org.apache.celeborn.common.CelebornConf
@@ -169,6 +169,48 @@ final private[worker] class StorageManager(conf: CelebornConf, workerSource: Abs
   val s3Dir = conf.s3Dir
   val ossDir = conf.ossDir
   val hdfsPermission = new FsPermission("755")
+
+  // Append-less Hadoop filesystems (e.g. Apache Ozone ofs://) cannot use the default
+  // re-open-and-append flush path; the data path must instead keep the output stream open
+  // (celeborn.worker.reuse.hdfs.outputStream.enabled=true). Detect this at startup so the
+  // misconfiguration surfaces here rather than as an opaque append() failure mid-shuffle:
+  //  - if the operator left the flag at its default, force it on (with a warning);
+  //  - if the operator explicitly disabled it, fail fast.
+  // Only relevant for the HDFS flusher path; S3/OSS use multipart upload, not append.
+  private def ensureHdfsAppendSupportOrReuseStream(): Unit = {
+    val key = CelebornConf.WORKER_REUSE_HDFS_OUTPUT_STREAM_ENABLED.key
+    val appendSupported =
+      if (conf.workerReuseHdfsOuputSteamEnabled) {
+        // Reuse already on; the probe is irrelevant, skip it.
+        true
+      } else {
+        try {
+          StorageManager.hadoopFs
+            .get(StorageInfo.Type.HDFS)
+            .hasPathCapability(new Path(hdfsDir), CommonPathCapabilities.FS_APPEND)
+        } catch {
+          // If the capability probe itself is unsupported, assume append works (HDFS default) and
+          // keep the existing behavior.
+          case _: Exception => true
+        }
+      }
+    StorageManager.decideHdfsAppendHandling(
+      conf.workerReuseHdfsOuputSteamEnabled,
+      appendSupported,
+      conf.contains(key)) match {
+      case StorageManager.HdfsAppendDecision.Proceed =>
+      case StorageManager.HdfsAppendDecision.ForceReuse =>
+        logWarning(
+          s"Filesystem at '$hdfsDir' does not support append; forcing '$key=true' so the HDFS " +
+            s"write path keeps an output stream open per active file. Set '$key' explicitly to " +
+            s"silence this.")
+        conf.set(key, "true")
+      case StorageManager.HdfsAppendDecision.FailFast =>
+        throw new CelebornException(
+          s"Filesystem at '$hdfsDir' does not support append, but '$key' is explicitly set to " +
+            s"false. Set '$key=true' to use an append-less filesystem such as Apache Ozone ofs://.")
+    }
+  }
   val (hdfsFlusher, _totalHdfsFlusherThread) =
     if (hasHDFSStorage) {
       logInfo(s"Initialize HDFS support with path $hdfsDir")
@@ -179,6 +221,7 @@ final private[worker] class StorageManager(conf: CelebornConf, workerSource: Abs
           logError("Celeborn initialize HDFS failed.", e)
           throw e
       }
+      ensureHdfsAppendSupportOrReuseStream()
       (
         Some(new HdfsFlusher(
           workerSource,
@@ -1306,4 +1349,29 @@ final private[worker] class StorageManager(conf: CelebornConf, workerSource: Abs
 
 object StorageManager {
   var hadoopFs: util.Map[StorageInfo.Type, FileSystem] = _
+
+  // Decision for how to handle the HDFS write path when the configured filesystem may not support
+  // append (e.g. Apache Ozone ofs://). Extracted as a pure function so it can be unit-tested.
+  sealed private[storage] trait HdfsAppendDecision
+  private[storage] object HdfsAppendDecision {
+    // Append works, or stream reuse is already enabled: nothing to do.
+    case object Proceed extends HdfsAppendDecision
+    // Append unsupported and the reuse flag was left at its default: force it on.
+    case object ForceReuse extends HdfsAppendDecision
+    // Append unsupported and the operator explicitly disabled reuse: contradictory, fail fast.
+    case object FailFast extends HdfsAppendDecision
+  }
+
+  private[storage] def decideHdfsAppendHandling(
+      reuseStreamEnabled: Boolean,
+      appendSupported: Boolean,
+      reuseExplicitlySet: Boolean): HdfsAppendDecision = {
+    if (reuseStreamEnabled || appendSupported) {
+      HdfsAppendDecision.Proceed
+    } else if (reuseExplicitlySet) {
+      HdfsAppendDecision.FailFast
+    } else {
+      HdfsAppendDecision.ForceReuse
+    }
+  }
 }

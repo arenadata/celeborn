@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.JavaConverters.asScalaBufferConverter
 
 import io.netty.buffer.{ByteBuf, CompositeByteBuf}
-import org.apache.hadoop.fs.{FileSystem, FSDataOutputStream}
+import org.apache.hadoop.fs.{FileSystem, FSDataOutputStream, Path}
 
 import org.apache.celeborn.common.CelebornConf
 import org.apache.celeborn.common.exception.AlreadyClosedException
@@ -562,7 +562,7 @@ class DfsTierWriter(
     if (!workerReuseHdfsOutputStreamEnabled) {
       closeHdfsStream()
     }
-    hadoopFs.setReplication(dfsFileInfo.getDfsPath, conf.workerDfsReplicationFactor.toShort);
+    setDfsReplicationQuietly(dfsFileInfo.getDfsPath)
     if (dfsFileInfo.isS3) {
       val uri = hadoopFs.getUri
       val bucketName = uri.getHost
@@ -617,6 +617,20 @@ class DfsTierWriter(
     if (hdfsStream != null) {
       hdfsStream.close()
       hdfsStream = null
+    }
+  }
+
+  // Some Hadoop-compatible filesystems (e.g. Apache Ozone ofs://) do not support per-file
+  // replication: setReplication may be a no-op or throw (e.g. UnsupportedOperationException, which
+  // the IOException handler around file creation would not catch). Replication is best-effort for
+  // transient shuffle files, so never fail file creation/commit because it is unsupported.
+  private def setDfsReplicationQuietly(path: Path): Unit = {
+    try {
+      hadoopFs.setReplication(path, conf.workerDfsReplicationFactor.toShort)
+    } catch {
+      case e: Exception =>
+        logWarning(
+          s"setReplication unsupported for $path, continuing without it: ${e.getMessage}")
     }
   }
 
@@ -697,9 +711,7 @@ class DfsTierWriter(
             hadoopFs.delete(dfsFileInfo.getDfsIndexPath, true)
           }
           val indexOutputStream = hadoopFs.create(dfsFileInfo.getDfsIndexPath)
-          hadoopFs.setReplication(
-            dfsFileInfo.getDfsIndexPath,
-            conf.workerDfsReplicationFactor.toShort)
+          setDfsReplicationQuietly(dfsFileInfo.getDfsIndexPath)
           val byteStream: ByteArrayOutputStream = new ByteArrayOutputStream()
           val dataStream = new DataOutputStream(byteStream)
           try {
@@ -731,6 +743,15 @@ class DfsTierWriter(
     storageManager.notifyFileInfoCommitted(shuffleKey, filename, dfsFileInfo)
 
   override def closeResource(): Unit = {
+    // With reuse.hdfs.outputStream.enabled (required for append-less filesystems such as Ozone
+    // ofs://), the output stream is held open for the file's lifetime. Close it on the error/destroy
+    // path too, otherwise the open stream (and its filesystem handle/lease) leaks.
+    try {
+      closeHdfsStream()
+    } catch {
+      case e: IOException =>
+        logWarning(s"Close hdfs stream failed for ${dfsFileInfo.getDfsPath}", e)
+    }
     if (s3MultipartUploadHandler != null) {
       s3MultipartUploadHandler.close()
     }

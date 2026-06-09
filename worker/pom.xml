@@ -198,5 +198,15 @@
         </dependency>
       </dependencies>
     </profile>
+    <profile>
+      <id>ozone</id>
+      <dependencies>
+        <dependency>
+          <groupId>org.apache.ozone</groupId>
+          <artifactId>ozone-filesystem-hadoop3</artifactId>
+          <version>${ozone.version}</version>
+        </dependency>
+      </dependencies>
+    </profile>
   </profiles>
 </project>
