@@ -43,10 +43,17 @@ object CelebornHadoopUtils extends Logging {
       val disableCacheName = String.format("fs.%s.impl.disable.cache", scheme)
       hadoopConf.set("dfs.replication", "2")
       hadoopConf.set(disableCacheName, "false")
+      // Prefer AES/CTR for HDFS data-transfer encryption when it is enabled. Without this,
+      // a client that does not advertise a cipher suite falls back to the legacy DIGEST-MD5
+      // SASL privacy path (3DES/RC4 in pure Java), which is dramatically more CPU intensive
+      // on both the client and the DataNode. Set as a default only so it can still be
+      // overridden via Hadoop configuration files or the 'celeborn.hadoop.' prefix.
+      hadoopConf.setIfUnset("dfs.encrypt.data.transfer.cipher.suites", "AES/CTR/NoPadding")
       if (logPrinted.compareAndSet(false, true)) {
         logInfo(
           "Celeborn overrides some HDFS settings defined in Hadoop configuration files, " +
-            s"including '$disableCacheName=false' and 'dfs.replication=2'. " +
+            s"including '$disableCacheName=false' and 'dfs.replication=2', and defaults " +
+            "'dfs.encrypt.data.transfer.cipher.suites=AES/CTR/NoPadding' when unset. " +
             "It can be overridden again in Celeborn configuration with the additional " +
             "prefix 'celeborn.hadoop.', e.g. 'celeborn.hadoop.dfs.replication=3'")
       }
