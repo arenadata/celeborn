@@ -15,4 +15,39 @@
 # limitations under the License.
 #
 
-Celeborn
+Celeborn {{ .Chart.AppVersion }} — release {{ .Release.Name }} in namespace {{ .Release.Namespace }}.
+
+{{- $masterPort := .Values.service.port }}
+{{- $endpoints := list }}
+{{- range until (.Values.master.replicas | int) }}
+{{- $host := (printf "%s-%d.%s.%s.svc.%s" (include "celeborn.master.statefulSet.name" $) . (include "celeborn.master.service.name" $) $.Release.Namespace (include "celeborn.clusterDomain" $)) }}
+{{- $endpoints = append $endpoints (printf "%s:%v" $host $masterPort) }}
+{{- end }}
+
+Master endpoints ({{ .Values.master.replicas }} replica{{ if ne (.Values.master.replicas | int) 1 }}s{{ end }}, RPC port {{ $masterPort }})
+====================================================================
+
+  celeborn.master.endpoints={{ $endpoints | join "," }}
+
+These are the per-pod (StatefulSet) DNS names of every master replica, not the
+Service VIP — clients connect to each replica directly so HA failover works.
+The list above is also written verbatim into the server config Secret
+({{ include "celeborn.secret.name" . }}, key celeborn-defaults.conf), so master and
+worker pods already use it. The port can be omitted in this value (Celeborn
+defaults to 9097); it is shown explicitly here for clarity.
+
+Point Spark clients at the same endpoints:
+
+  spark.celeborn.master.endpoints={{ $endpoints | join "," }}
+
+{{- if .Values.internalPort.enabled }}
+
+SASL auth (celeborn.auth.enabled) can be used on this cluster. Set the matching
+flag on clients:
+
+  spark.celeborn.auth.enabled=true
+{{- end }}
+
+Inspect the rendered server config with:
+
+  kubectl -n {{ .Release.Namespace }} get secret {{ include "celeborn.secret.name" . }} -o jsonpath='{.data.celeborn-defaults\.conf}' | base64 -d

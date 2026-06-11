@@ -98,13 +98,18 @@ spec:
         {{- $namespace := .Release.Namespace }}
         - >
           until {{ range until (.Values.master.replicas | int) }}
-          nslookup {{ include "celeborn.master.statefulSet.name" $ }}-{{ . }}.{{ include "celeborn.master.service.name" $ }}.{{ $namespace }}.svc.{{ $.Values.cluster.name }}.local &&
+          nslookup {{ include "celeborn.master.statefulSet.name" $ }}-{{ . }}.{{ include "celeborn.master.service.name" $ }}.{{ $namespace }}.svc.{{ include "celeborn.clusterDomain" $ }} &&
           {{- end }}
           true; do
             echo "waiting for master";
             sleep 2;
           done && exec /opt/celeborn/sbin/start-worker.sh
         ports:
+        {{- if .Values.internalPort.enabled }}
+        - containerPort: {{ .Values.internalPort.workerPort }}
+          name: internal
+          protocol: TCP
+        {{- end }}
         - containerPort: {{ get .Values.celeborn "celeborn.worker.http.port" | default 9096 }}
           name: metrics
           protocol: TCP
@@ -126,6 +131,13 @@ spec:
         - name: celeborn-conf
           subPath: metrics.properties
           mountPath: /opt/celeborn/conf/metrics.properties
+        {{- if .Values.configsSecretName }}
+        {{- range .Values.hadoopConfigFiles }}
+        - name: celeborn-hadoop-conf
+          subPath: {{ . }}
+          mountPath: /opt/celeborn/conf/{{ . }}
+        {{- end }}
+        {{- end }}
         {{- with .Values.worker.volumeMounts }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -137,10 +149,7 @@ spec:
         securityContext:
           {{- toYaml . | nindent 10 }}
         {{- end }}
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+      {{- include "celeborn.imagePullSecrets" . | nindent 6 }}
       volumes:
       - name: celeborn-conf
         secret:
@@ -153,6 +162,12 @@ spec:
             path: log4j2.xml
           - key: metrics.properties
             path: metrics.properties
+      {{- if .Values.configsSecretName }}
+      - name: celeborn-hadoop-conf
+        secret:
+          secretName: {{ .Values.configsSecretName }}
+          defaultMode: 0444
+      {{- end }}
       {{- with .Values.worker.volumes }}
       {{- toYaml . | nindent 6 }}
       {{- end }}

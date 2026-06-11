@@ -57,6 +57,7 @@ helm.sh/chart: {{ include "celeborn.chart" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/part-of: {{ include "celeborn.name" . }}
 {{- end }}
 
 {{/*
@@ -65,6 +66,13 @@ Selector labels
 {{- define "celeborn.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "celeborn.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
+Kubernetes cluster domain, used to build in-cluster service FQDNs.
+*/}}
+{{- define "celeborn.clusterDomain" -}}
+{{- .Values.clusterDomain | default "cluster.local" -}}
 {{- end }}
 
 {{/* Create the name of the service account to use. */}}
@@ -114,4 +122,37 @@ Create the name of the celeborn image to use
 {{- $imageRepository := .Values.image.repository | default "apache/celeborn" }}
 {{- $imageTag := .Values.image.tag | default .Chart.AppVersion }}
 {{- printf "%s/%s:%s" $imageRegistry $imageRepository $imageTag }}
+{{- end }}
+
+{{/*
+Name of the docker-config Secret used to pull images from a private registry.
+Uses image.pullSecret.name if provided, otherwise a generated name for the
+Secret rendered from image.pullSecret.credentials.
+*/}}
+{{- define "celeborn.dockerConfigName" -}}
+{{- if .Values.image.pullSecret.name -}}
+{{ .Values.image.pullSecret.name }}
+{{- else -}}
+{{ include "celeborn.fullname" . }}-docker-config
+{{- end -}}
+{{- end }}
+
+{{/*
+Render the imagePullSecrets list, combining the explicit imagePullSecrets list
+with the docker-config Secret derived from image.pullSecret.
+*/}}
+{{- define "celeborn.imagePullSecrets" -}}
+{{- $secrets := list -}}
+{{- range .Values.imagePullSecrets -}}
+{{- $secrets = append $secrets .name -}}
+{{- end -}}
+{{- if or .Values.image.pullSecret.credentials .Values.image.pullSecret.name -}}
+{{- $secrets = append $secrets (include "celeborn.dockerConfigName" .) -}}
+{{- end -}}
+{{- if $secrets }}
+imagePullSecrets:
+{{- range $secrets }}
+  - name: {{ . }}
+{{- end }}
+{{- end }}
 {{- end }}

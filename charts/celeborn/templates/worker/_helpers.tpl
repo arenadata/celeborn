@@ -52,12 +52,21 @@ Create worker Service http port params if metrics is enabled
 {{- $workerPort = $val -}}
 {{- end }}
 {{- end }}
-{{- if eq (toString $metricsEnabled) "true" -}}
+{{- $metricsOn := eq (toString $metricsEnabled) "true" -}}
+{{- if or $metricsOn .Values.internalPort.enabled -}}
 ports:
+{{- if $metricsOn }}
   - port: {{ $workerPort }}
     targetPort: {{ $workerPort }}
     protocol: TCP
     name: celeborn-worker-http
+{{- end }}
+{{- if .Values.internalPort.enabled }}
+  - port: {{ .Values.internalPort.workerPort }}
+    targetPort: {{ .Values.internalPort.workerPort }}
+    protocol: TCP
+    name: internal
+{{- end }}
 {{- end }}
 {{- end }}
 
