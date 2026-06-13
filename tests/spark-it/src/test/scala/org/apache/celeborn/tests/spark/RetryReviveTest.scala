@@ -47,6 +47,9 @@ class RetryReviveTest extends AnyFunSuite
     val sparkConf = new SparkConf()
       .set(s"spark.${CelebornConf.TEST_CLIENT_RETRY_REVIVE.key}", "true")
       .set(s"spark.${CelebornConf.CLIENT_PUSH_MAX_REVIVE_TIMES.key}", "3")
+      // Allow Spark to retry a task so a single transient revive failure (e.g. mini-cluster
+      // heartbeat/port flakiness on a loaded CI runner) does not abort the whole job.
+      .set("spark.task.maxFailures", "4")
       .setAppName("celeborn-demo").setMaster("local[2]")
     val ss = SparkSession.builder()
       .config(updateSparkConf(sparkConf, ShuffleMode.HASH))
@@ -70,6 +73,9 @@ class RetryReviveTest extends AnyFunSuite
       .set(s"spark.${CelebornConf.CLIENT_SHUFFLE_DYNAMIC_RESOURCE_ENABLED.key}", "true")
       .set(s"spark.${CelebornConf.CLIENT_SHUFFLE_DYNAMIC_RESOURCE_FACTOR.key}", "0")
       .set(s"spark.${CelebornConf.MASTER_SLOT_ASSIGN_EXTRA_SLOTS.key}", "0")
+      // Allow Spark to retry a task so a single transient revive failure (e.g. mini-cluster
+      // heartbeat/port flakiness on a loaded CI runner) does not abort the whole job.
+      .set("spark.task.maxFailures", "4")
       .setAppName("celeborn-demo").setMaster("local[2]")
     val ss = SparkSession.builder()
       .config(updateSparkConf(sparkConf, ShuffleMode.HASH))
