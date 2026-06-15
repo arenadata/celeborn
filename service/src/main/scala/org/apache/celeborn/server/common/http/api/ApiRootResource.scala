@@ -17,7 +17,7 @@
 
 package org.apache.celeborn.server.common.http.api
 
-import org.eclipse.jetty.servlet.{ServletContextHandler, ServletHolder}
+import org.eclipse.jetty.ee8.servlet.{ServletContextHandler, ServletHolder}
 import org.glassfish.jersey.server.ResourceConfig
 import org.glassfish.jersey.servlet.ServletContainer
 

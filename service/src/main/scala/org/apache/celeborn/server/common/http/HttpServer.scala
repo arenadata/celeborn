@@ -20,8 +20,9 @@ package org.apache.celeborn.server.common.http
 import scala.util.Try
 
 import org.apache.commons.lang3.SystemUtils
+import org.eclipse.jetty.ee8.servlet.ServletContextHandler
 import org.eclipse.jetty.http.HttpVersion
-import org.eclipse.jetty.server.{Handler, HttpConfiguration, HttpConnectionFactory, Server, ServerConnector, SslConnectionFactory}
+import org.eclipse.jetty.server.{HttpConfiguration, HttpConnectionFactory, Server, ServerConnector, SslConnectionFactory}
 import org.eclipse.jetty.server.handler.{ContextHandlerCollection, ErrorHandler}
 import org.eclipse.jetty.util.component.LifeCycle
 import org.eclipse.jetty.util.ssl.SslContextFactory
@@ -62,7 +63,7 @@ private[celeborn] case class HttpServer(
   private def stopInternal(exitCode: Int): Unit = {
     if (exitCode == CelebornExitKind.EXIT_IMMEDIATELY) {
       server.setStopTimeout(0)
-      connector.setStopTimeout(0)
+      connector.setShutdownIdleTimeout(0)
     }
     val threadPool = server.getThreadPool
     threadPool match {
@@ -87,9 +88,13 @@ private[celeborn] case class HttpServer(
 
   def getServerUri: String = connector.getHost + ":" + connector.getLocalPort
 
-  def addHandler(handler: Handler): Unit = synchronized {
-    rootHandler.addHandler(handler)
-    if (!handler.isStarted) handler.start()
+  def addHandler(handler: ServletContextHandler): Unit = synchronized {
+    // In Jetty 12 the ee8 ServletContextHandler is a nested handler that bridges to the core
+    // handler tree via its CoreContextHandler; that core handler is what the core
+    // ContextHandlerCollection expects.
+    val coreHandler = handler.getCoreContextHandler
+    rootHandler.addHandler(coreHandler)
+    if (!coreHandler.isStarted) coreHandler.start()
   }
 
   def addStaticHandler(
@@ -131,8 +136,7 @@ object HttpServer extends Logging {
 
     val errorHandler = new ErrorHandler()
     errorHandler.setShowStacks(true)
-    errorHandler.setServer(server)
-    server.addBean(errorHandler)
+    server.setErrorHandler(errorHandler)
 
     val collection = new ContextHandlerCollection
     server.setHandler(collection)
@@ -188,7 +192,7 @@ object HttpServer extends Logging {
     connector.setPort(port)
     connector.setReuseAddress(!SystemUtils.IS_OS_WINDOWS)
     connector.setAcceptQueueSize(math.min(connector.getAcceptors, 8))
-    connector.setStopTimeout(stopTimeout)
+    connector.setShutdownIdleTimeout(stopTimeout)
     connector.setIdleTimeout(idleTimeout)
 
     new HttpServer(role, server, connector, collection)

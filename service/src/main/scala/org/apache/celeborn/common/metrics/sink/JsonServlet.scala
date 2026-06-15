@@ -24,7 +24,7 @@ import scala.collection.mutable.ArrayBuffer
 import com.codahale.metrics.MetricRegistry
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.{ClassTagExtensions, DefaultScalaModule}
-import org.eclipse.jetty.servlet.ServletContextHandler
+import org.eclipse.jetty.ee8.servlet.ServletContextHandler
 
 import org.apache.celeborn.common.metrics.{CelebornTimer, ResettableSlidingWindowReservoir}
 import org.apache.celeborn.common.metrics.source._

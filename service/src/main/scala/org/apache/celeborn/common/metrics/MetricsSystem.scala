@@ -26,7 +26,7 @@ import scala.util.matching.Regex
 
 import com.codahale.metrics.{Metric, MetricFilter, MetricRegistry}
 import com.google.common.annotations.VisibleForTesting
-import org.eclipse.jetty.servlet.ServletContextHandler
+import org.eclipse.jetty.ee8.servlet.ServletContextHandler
 
 import org.apache.celeborn.common.CelebornConf
 import org.apache.celeborn.common.CelebornConf.{METRICS_JSON_PATH, METRICS_PROMETHEUS_PATH}

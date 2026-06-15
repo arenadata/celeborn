@@ -23,7 +23,7 @@ import javax.ws.rs.WebApplicationException
 import javax.ws.rs.core.{Context, MediaType, Response}
 import javax.ws.rs.ext.{ExceptionMapper, Provider}
 
-import org.eclipse.jetty.server.handler.ContextHandler
+import org.eclipse.jetty.ee8.nested.ContextHandler
 
 import org.apache.celeborn.common.internal.Logging
 import org.apache.celeborn.server.common.HttpService

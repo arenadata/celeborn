@@ -63,7 +63,7 @@ object Dependencies {
   val jdkToolsVersion = "0.1"
   val metricsVersion = "4.2.25"
   val mockitoVersion = "4.11.0"
-  val nettyVersion = "4.2.12.Final"
+  val nettyVersion = "4.2.13.Final"
   val ratisVersion = "3.2.2"
   val roaringBitmapVersion = "1.0.6"
   val rocksdbJniVersion = "9.10.0"
@@ -80,7 +80,7 @@ object Dependencies {
   val swaggerVersion = "2.2.1"
   val swaggerUiVersion = "4.9.1"
   val jerseyVersion = "2.47"
-  val jettyVersion = "9.4.58.v20250814"
+  val jettyVersion = "12.1.8"
   val javaxServletApiVersion = "4.0.1"
   val jakartaServeletApiVersion = "5.0.0"
   val openApiToolsJacksonBindNullableVersion = "0.2.6"
@@ -211,9 +211,9 @@ object Dependencies {
   val mybatis = "org.mybatis" % "mybatis" % mybatisVersion
   val hikaricp = "com.zaxxer" % "HikariCP" % hikaricpVersion
   val jettyServer = "org.eclipse.jetty" % "jetty-server" % jettyVersion
-  val jettyServlet = "org.eclipse.jetty" % "jetty-servlet" % jettyVersion excludeAll(
+  val jettyServlet = "org.eclipse.jetty.ee8" % "jetty-ee8-servlet" % jettyVersion excludeAll(
     ExclusionRule("javax.servlet", "javax.servlet-api"))
-  val jettyProxy = "org.eclipse.jetty" % "jetty-proxy" % jettyVersion
+  val jettyProxy = "org.eclipse.jetty.ee8" % "jetty-ee8-proxy" % jettyVersion
   val javaxServletApi = "javax.servlet" % "javax.servlet-api" % javaxServletApiVersion
   val jakartaServletApi = "jakarta.servlet" % "jakarta.servlet-api" % jakartaServeletApiVersion
   val jerseyServer = "org.glassfish.jersey.core" % "jersey-server" % jerseyVersion excludeAll(
@@ -1041,7 +1041,7 @@ object Spark42 extends SparkClientProjects {
 
   val sparkVersion = "4.2.0.1-4.3.0-0"
   val zstdJniVersion = "1.5.7-7"
-  val nettyVersion = "4.2.12.Final"
+  val nettyVersion = "4.2.13.Final"
   val scalaBinaryVersion = "2.13"
 
   override val sparkColumnarShuffleVersion: String = "4"

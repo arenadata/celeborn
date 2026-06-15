@@ -20,7 +20,7 @@ package org.apache.celeborn.server.common.http
 import java.net.URL
 import javax.servlet.http.{HttpServlet, HttpServletRequest, HttpServletResponse}
 
-import org.eclipse.jetty.servlet.{DefaultServlet, ServletContextHandler, ServletHolder}
+import org.eclipse.jetty.ee8.servlet.{DefaultServlet, ServletContextHandler, ServletHolder}
 
 import org.apache.celeborn.common.exception.CelebornException
 import org.apache.celeborn.common.internal.Logging
