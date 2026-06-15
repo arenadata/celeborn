@@ -21,6 +21,12 @@
 
 ci/
 
+# Sample Hadoop client configs (reference for configsSecretName)
+envs/
+
+# Local, environment-specific values overrides
+_values*.yaml
+
 # Common VCS dirs
 .git/
 .gitignore

@@ -37,9 +37,50 @@ image:
   pullPolicy: Always
   # -- Image name for init container. (your-private-repo/alpine:3.18)
   initContainerImage: alpine:3.18
+  # Credentials for pulling the image from a private registry. Either reference an
+  # existing docker-registry Secret via `name`, or provide `credentials` and the
+  # chart will render a `kubernetes.io/dockerconfigjson` Secret for you.
+  pullSecret:
+    # -- Name of an existing docker-registry Secret. When empty and `credentials`
+    # is set, a Secret named `<fullname>-docker-config` is created.
+    name: ""
+    # -- Registry credentials used to render a docker-config Secret.
+    credentials: {}
+    #   registry: private-docker-registry
+    #   username: user
+    #   password: pass
 
-# -- Image pull secrets for private image registry
+# -- Additional image pull secrets (Secret names) for private image registries.
+# Merged with the docker-config Secret derived from `image.pullSecret`.
 imagePullSecrets: []
+
+# -- Kubernetes cluster domain, used to build in-cluster service FQDNs
+# (e.g. `<pod>.<svc>.<namespace>.svc.<clusterDomain>`).
+clusterDomain: cluster.local
+
+# -- Name of an existing Secret holding Hadoop client config files
+# (e.g. `core-site.xml`, `hdfs-site.xml`) for the DFS storage path (HDFS / Ozone
+# `ofs://` / S3). When set, the keys listed in `hadoopConfigFiles` are mounted into
+# each master/worker pod under `/opt/celeborn/conf/`. See the `envs/` directory for
+# sample files. Leave empty to disable.
+configsSecretName: ""
+
+# -- Keys from `configsSecretName` to mount under `/opt/celeborn/conf/`.
+hadoopConfigFiles:
+  - core-site.xml
+
+# Internal ports for master/worker (and inter-master) RPC. Required by Celeborn
+# auth (`celeborn.auth.enabled`, SASL). When enabled, the chart sets
+# `celeborn.internal.port.enabled=true`, wires the internal master/worker ports and
+# endpoints, and exposes them on the StatefulSets and headless Services.
+internalPort:
+  # -- Whether to enable the internal RPC ports.
+  enabled: false
+  # -- Internal port on each master (`celeborn.master.internal.port` and
+  # `celeborn.master.ha.node.<id>.internal.port`).
+  masterPort: 8097
+  # -- Internal port on each worker (`celeborn.worker.internal.port`).
+  workerPort: 8093
 
 # -- Celeborn configurations.
 # Ref: [Configuration - Apache Celeborn](https://celeborn.apache.org/docs/latest/configuration).
@@ -141,12 +182,13 @@ master:
       memory: 1g
 
   # -- Security configurations for Celeborn master containers.
+  # Note: `fsGroup` is a pod-level setting (see `podSecurityContext`), not a valid
+  # container `securityContext` field.
   securityContext:
     privileged: false
     allowPrivilegeEscalation: false
     runAsUser: 10006
     runAsGroup: 10006
-    fsGroup: 10006
     readOnlyRootFilesystem: true
 
   # -- Volumes for Celeborn master pods.
@@ -233,7 +275,7 @@ master:
 
 worker:
   # -- Number of Celeborn worker replicas to deploy, should less than node number.
-  replicas: 5
+  replicas: 3
 
   # -- Value for terminationGracePeriodSeconds for worker pods
   terminationGracePeriodSeconds: 30
@@ -282,12 +324,13 @@ worker:
       memory: 2g
 
   # -- Security configurations for Celeborn worker containers.
+  # Note: `fsGroup` is a pod-level setting (see `podSecurityContext`), not a valid
+  # container `securityContext` field.
   securityContext:
     privileged: false
     allowPrivilegeEscalation: false
     runAsUser: 10006
     runAsGroup: 10006
-    fsGroup: 10006
     readOnlyRootFilesystem: true
 
   # Add additional init containers into workers (templated).
@@ -353,6 +396,8 @@ worker:
     runAsGroup: 10006
     # The group ID to use when modifying the ownership and permissions of the mounted volumes.
     fsGroup: 10006
+    # Only change permissions and ownership if the permission and the ownership of root directory does not match with expected permissions of the volume
+    fsGroupChangePolicy: "OnRootMismatch"
 
   # -- Volume claim templates for Celeborn worker pods.
   volumeClaimTemplates:
@@ -434,10 +479,6 @@ additionalNodePortServicePerReplica:
   nodePortStartRange: 30000
   # -- when using NodePort service type, you can specify map of annotations for each master replica
   annotations: {}
-
-cluster:
-  # -- Specifies Kubernetes cluster name
-  name: cluster
 
 podMonitor:
   # -- Specifies whether to enable creating pod monitors for Celeborn pods

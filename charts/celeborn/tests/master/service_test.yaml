@@ -55,6 +55,30 @@ tests:
           path: spec.ports[0].targetPort
           value: 9097
 
+  - it: Should not expose internal port by default
+    asserts:
+      - notContains:
+          path: spec.ports
+          content:
+            name: internal
+            port: 8097
+            targetPort: 8097
+            protocol: TCP
+
+  - it: Should expose internal port when `internalPort.enabled` is set
+    set:
+      internalPort:
+        enabled: true
+        masterPort: 8097
+    asserts:
+      - contains:
+          path: spec.ports
+          content:
+            name: internal
+            port: 8097
+            targetPort: 8097
+            protocol: TCP
+
   - it: Should create NodePort service for each master replica
     set:
       master:

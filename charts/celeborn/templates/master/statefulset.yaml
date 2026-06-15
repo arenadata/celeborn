@@ -93,14 +93,19 @@ spec:
         {{- $namespace := .Release.Namespace }}
         - >
           until {{ range until (.Values.master.replicas | int) }}
-          nslookup {{ include "celeborn.master.statefulSet.name" $ }}-{{ . }}.{{ include "celeborn.master.service.name" $ }}.{{ $namespace }}.svc.{{ $.Values.cluster.name }}.local &&
+          nslookup {{ include "celeborn.master.statefulSet.name" $ }}-{{ . }}.{{ include "celeborn.master.service.name" $ }}.{{ $namespace }}.svc.{{ include "celeborn.clusterDomain" $ }} &&
           {{- end }}
           true; do
-            echo "waiting for master"; 
+            echo "waiting for master";
             sleep 2;
           done && exec /opt/celeborn/sbin/start-master.sh
         ports:
         - containerPort: {{ .Values.service.port }}
+        {{- if .Values.internalPort.enabled }}
+        - containerPort: {{ .Values.internalPort.masterPort }}
+          name: internal
+          protocol: TCP
+        {{- end }}
         - containerPort: {{ get .Values.celeborn "celeborn.master.http.port" | default 9098 }}
           name: metrics
           protocol: TCP
@@ -125,6 +130,13 @@ spec:
         - name: celeborn-conf
           subPath: ratis-log4j.properties
           mountPath: /opt/celeborn/conf/ratis-log4j.properties
+        {{- if .Values.configsSecretName }}
+        {{- range .Values.hadoopConfigFiles }}
+        - name: celeborn-hadoop-conf
+          subPath: {{ . }}
+          mountPath: /opt/celeborn/conf/{{ . }}
+        {{- end }}
+        {{- end }}
         {{- with .Values.master.volumeMounts }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -136,10 +148,7 @@ spec:
         securityContext:
           {{- toYaml . | nindent 10 }}
         {{- end }}
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+      {{- include "celeborn.imagePullSecrets" . | nindent 6 }}
       volumes:
       - name: celeborn-conf
         secret:
@@ -154,6 +163,12 @@ spec:
             path: metrics.properties
           - key: ratis-log4j.properties
             path: ratis-log4j.properties
+      {{- if .Values.configsSecretName }}
+      - name: celeborn-hadoop-conf
+        secret:
+          secretName: {{ .Values.configsSecretName }}
+          defaultMode: 0444
+      {{- end }}
       {{- with .Values.master.volumes }}
       {{- toYaml . | nindent 6 }}
       {{- end }}

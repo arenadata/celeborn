@@ -64,5 +64,11 @@ spec:
     targetPort: {{ .Values.service.port }}
     protocol: TCP
     name: celeborn-master
+  {{- if .Values.internalPort.enabled }}
+  - port: {{ .Values.internalPort.masterPort }}
+    targetPort: {{ .Values.internalPort.masterPort }}
+    protocol: TCP
+    name: internal
+  {{- end }}
   type: {{ .Values.service.type }}
   clusterIP: None

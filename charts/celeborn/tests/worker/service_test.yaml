@@ -47,3 +47,33 @@ tests:
       - equal:
           path: spec.type
           value: NodePort
+
+  - it: Should expose internal port when `internalPort.enabled` is set
+    set:
+      internalPort:
+        enabled: true
+        workerPort: 8093
+    asserts:
+      - contains:
+          path: spec.ports
+          content:
+            name: internal
+            port: 8093
+            targetPort: 8093
+            protocol: TCP
+
+  - it: Should expose internal port even when metrics are disabled
+    set:
+      celeborn:
+        celeborn.metrics.enabled: false
+      internalPort:
+        enabled: true
+        workerPort: 8093
+    asserts:
+      - contains:
+          path: spec.ports
+          content:
+            name: internal
+            port: 8093
+            targetPort: 8093
+            protocol: TCP
