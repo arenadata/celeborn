@@ -27,6 +27,8 @@ ARG ubuntu_image_tag
 ARG jdk_package
 ARG custom_jdk_path
 ARG additional_packages_repo
+# Set to "true" to additionally install network debug tools.
+ARG install_debug_tools=false
 
 ARG celeborn_uid=10006
 ARG celeborn_gid=10006
@@ -40,7 +42,11 @@ RUN set -ex && \
         echo ${additional_packages_repo} > /etc/apt/sources.list.d/additional.list; \
     fi && \
     apt-get update && \
-    apt-get install -y bash tini busybox bind9-utils telnet net-tools procps krb5-user dnsutils libjemalloc-dev ${jdk_package} && \
+    apt-get install -y bash tini busybox procps krb5-user libjemalloc-dev ${jdk_package} && \
+    if [ "${install_debug_tools}" = "true" ]; then \
+        apt-get install -y bind9-utils telnet net-tools dnsutils; \
+    fi && \
+    apt-get upgrade -y && \
     if [ -n "${custom_jdk_path}" ]; then \
         update-alternatives --install /usr/bin/java java ${custom_jdk_path}/bin/java 100; \
         update-alternatives --install /usr/bin/javac javac ${custom_jdk_path}/bin/javac 100; \

@@ -176,6 +176,13 @@ class AuthenticationFilter(conf: CelebornConf, serviceName: String) extends Filt
         httpResponse.sendError(HttpServletResponse.SC_FORBIDDEN, e.getMessage)
     } finally {
       RestAuditLogger.audit(httpRequest, httpResponse)
+      // Clear the request-scoped thread locals so they do not leak across pooled Jetty
+      // threads. Previously this was done by an outer Jetty HandlerWrapper, which no longer
+      // exists under Jetty 12's core/ee8 handler model.
+      HTTP_CLIENT_IDENTIFIER.remove()
+      HTTP_CLIENT_IP_ADDRESS.remove()
+      HTTP_PROXY_HEADER_CLIENT_IP_ADDRESS.remove()
+      HTTP_AUTH_TYPE.remove()
     }
   }
 

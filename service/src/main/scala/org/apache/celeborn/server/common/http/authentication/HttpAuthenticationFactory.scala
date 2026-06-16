@@ -17,49 +17,12 @@
 
 package org.apache.celeborn.server.common.http.authentication
 
-import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
-
-import org.eclipse.jetty.server.{Handler, Request}
-import org.eclipse.jetty.server.handler.HandlerWrapper
-
 import org.apache.celeborn.common.CelebornConf
 import org.apache.celeborn.common.exception.CelebornException
 import org.apache.celeborn.reflect.DynConstructors
 import org.apache.celeborn.spi.authentication.{PasswdAuthenticationProvider, TokenAuthenticationProvider}
 
 object HttpAuthenticationFactory {
-  def wrapHandler(handler: Handler): HandlerWrapper = {
-    new HandlerWrapper {
-      _handler = handler
-
-      override def handle(
-          target: String,
-          baseRequest: Request,
-          request: HttpServletRequest,
-          response: HttpServletResponse): Unit = {
-
-        try {
-          handler.handle(target, baseRequest, request, response)
-        } finally {
-          AuthenticationFilter.HTTP_CLIENT_IDENTIFIER.remove()
-          AuthenticationFilter.HTTP_CLIENT_IP_ADDRESS.remove()
-          AuthenticationFilter.HTTP_PROXY_HEADER_CLIENT_IP_ADDRESS.remove()
-          AuthenticationFilter.HTTP_AUTH_TYPE.remove()
-        }
-      }
-
-      override def doStart(): Unit = {
-        super.doStart()
-        handler.start()
-      }
-
-      override def doStop(): Unit = {
-        handler.stop()
-        super.doStop()
-      }
-    }
-  }
-
   def getPasswordAuthenticationProvider(
       providerClass: String,
       conf: CelebornConf): PasswdAuthenticationProvider = {

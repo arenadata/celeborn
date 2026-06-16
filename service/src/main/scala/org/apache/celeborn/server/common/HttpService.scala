@@ -22,7 +22,7 @@ import javax.servlet.DispatcherType
 
 import scala.collection.JavaConverters._
 
-import org.eclipse.jetty.servlet.FilterHolder
+import org.eclipse.jetty.ee8.servlet.FilterHolder
 
 import org.apache.celeborn.common.CelebornConf
 import org.apache.celeborn.common.internal.Logging
@@ -31,7 +31,7 @@ import org.apache.celeborn.common.protocol.{TransportModuleConstants, WorkerEven
 import org.apache.celeborn.common.util.Utils
 import org.apache.celeborn.server.common.http.HttpServer
 import org.apache.celeborn.server.common.http.api.ApiRootResource
-import org.apache.celeborn.server.common.http.authentication.{AuthenticationFilter, HttpAuthenticationFactory}
+import org.apache.celeborn.server.common.http.authentication.AuthenticationFilter
 import org.apache.celeborn.server.common.service.config.ConfigLevel
 
 abstract class HttpService extends Service with Logging {
@@ -339,7 +339,7 @@ abstract class HttpService extends Service with Logging {
     val contextHandler = ApiRootResource.getServletHandler(this)
     val holder = new FilterHolder(new AuthenticationFilter(conf, serviceName))
     contextHandler.addFilter(holder, "/*", util.EnumSet.allOf(classOf[DispatcherType]))
-    httpServer.addHandler(HttpAuthenticationFactory.wrapHandler(contextHandler))
+    httpServer.addHandler(contextHandler)
 
     httpServer.addStaticHandler("META-INF/resources/webjars/swagger-ui/4.9.1/", "/swagger-static/")
     httpServer.addStaticHandler("org/apache/celeborn/swagger", "/swagger")
