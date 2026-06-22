@@ -539,3 +539,63 @@ tests:
     asserts:
       - notExists:
           path: spec.template.spec.initContainers
+
+  - it: Should expose internal container port when `internalPort.enabled` is set
+    template: worker/statefulset.yaml
+    set:
+      internalPort:
+        enabled: true
+        workerPort: 8093
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            containerPort: 8093
+            name: internal
+            protocol: TCP
+
+  - it: Should not expose internal container port when `internalPort.enabled` is false
+    template: worker/statefulset.yaml
+    set:
+      internalPort:
+        enabled: false
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: internal
+
+  - it: Should mount Hadoop config files when `configsSecretName` is set
+    template: worker/statefulset.yaml
+    set:
+      configsSecretName: celeborn-hadoop-conf
+      hadoopConfigFiles:
+        - core-site.xml
+        - hdfs-site.xml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: celeborn-hadoop-conf
+            subPath: core-site.xml
+            mountPath: /opt/celeborn/conf/core-site.xml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: celeborn-hadoop-conf
+            subPath: hdfs-site.xml
+            mountPath: /opt/celeborn/conf/hdfs-site.xml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: celeborn-hadoop-conf
+            secret:
+              secretName: celeborn-hadoop-conf
+              defaultMode: 0444
+
+  - it: Should add the `app.kubernetes.io/part-of` label
+    template: worker/statefulset.yaml
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/part-of"]
+          value: celeborn
