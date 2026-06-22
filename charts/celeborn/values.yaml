@@ -146,7 +146,7 @@ master:
   # -- Environment variables for Celeborn master containers.
   env:
     - name: CELEBORN_MASTER_MEMORY
-      value: 512Mi
+      value: 512m
     - name: CELEBORN_MASTER_JAVA_OPTS
       value: -Dio.netty.leakDetectionLevel=advanced -Djava.net.preferIPv4Stack=true
     - name: CELEBORN_NO_DAEMONIZE
@@ -176,10 +176,10 @@ master:
   resources:
     requests:
       cpu: 500m
-      memory: 1g
+      memory: 1Gi
     limits:
       cpu: 500m
-      memory: 1g
+      memory: 1Gi
 
   # -- Security configurations for Celeborn master containers.
   # Note: `fsGroup` is a pod-level setting (see `podSecurityContext`), not a valid
@@ -318,10 +318,10 @@ worker:
   resources:
     requests:
       cpu: 500m
-      memory: 2g
+      memory: 2Gi
     limits:
       cpu: 500m
-      memory: 2g
+      memory: 2Gi
 
   # -- Security configurations for Celeborn worker containers.
   # Note: `fsGroup` is a pod-level setting (see `podSecurityContext`), not a valid
