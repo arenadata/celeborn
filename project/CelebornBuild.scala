@@ -1037,7 +1037,7 @@ object Spark42 extends SparkClientProjects {
   val lz4JavaVersion = "1.11.0"
   val sparkProjectScalaVersion = "2.13.18"
 
-  val sparkVersion = "4.2.0.1-4.3.0-0"
+  val sparkVersion = "4.2.0.1-4.3.0-1"
   val zstdJniVersion = "1.5.7-7"
   val nettyVersion = "4.2.13.Final"
   val scalaBinaryVersion = "2.13"
