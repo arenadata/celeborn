@@ -15,6 +15,26 @@
  * limitations under the License.
  */
 
-package org.apache.celeborn.plugin.flink;
+#pragma once
 
-public class RemoteShuffleMasterSuiteJV117 extends RemoteShuffleMasterSuiteJ {}
+#include <map>
+#include <set>
+#include <string>
+
+namespace celeborn {
+namespace protocol {
+
+// Failed batches for one partition location: map attempt
+// ("<mapId>-<attemptId>")
+// -> failed batchIds. Mirrors Java LocationPushFailedBatches.
+using LocationPushFailedBatches = std::map<std::string, std::set<int>>;
+
+// Failed batches across partition locations: partition uniqueId
+// ("<id>-<epoch>")
+// -> that location's failed batches. Recorded on the write path, consumed by
+// the reader to skip duplicate batches.
+using PartitionPushFailedBatches =
+    std::map<std::string, LocationPushFailedBatches>;
+
+} // namespace protocol
+} // namespace celeborn

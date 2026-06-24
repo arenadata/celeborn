@@ -52,8 +52,6 @@ jobs:
           server-username: GITHUB_ACTOR
           server-password: GITHUB_TOKEN
       - run: |
-          build/mvn spotless:check -Pgoogle-mirror,flink-1.16
-          build/mvn spotless:check -Pgoogle-mirror,flink-1.17
           build/mvn spotless:check -Pgoogle-mirror,flink-1.18
           build/mvn spotless:check -Pgoogle-mirror,flink-1.19
           build/mvn spotless:check -Pgoogle-mirror,flink-1.20

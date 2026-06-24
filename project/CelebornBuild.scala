@@ -538,8 +538,6 @@ object Utils {
   val FLINK_VERSION = profiles.filter(_.startsWith("flink")).headOption
 
   lazy val flinkClientProjects = FLINK_VERSION match {
-    case Some("flink-1.16") => Some(Flink116)
-    case Some("flink-1.17") => Some(Flink117)
     case Some("flink-1.18") => Some(Flink118)
     case Some("flink-1.19") => Some(Flink119)
     case Some("flink-1.20") => Some(Flink120)
@@ -1005,7 +1003,7 @@ object Spark40 extends SparkClientProjects {
   val lz4JavaVersion = "1.8.0"
   val sparkProjectScalaVersion = "2.13.16"
 
-  val sparkVersion = "4.0.1"
+  val sparkVersion = "4.0.3"
   val zstdJniVersion = "1.5.6-9"
   val scalaBinaryVersion = "2.13"
 
@@ -1261,30 +1259,6 @@ trait SparkClientProjects {
 //                   Flink Client                     //
 ////////////////////////////////////////////////////////
 
-object Flink116 extends FlinkClientProjects {
-  val flinkVersion = "1.16.3"
-
-  // note that SBT does not allow using the period symbol (.) in project names.
-  val flinkClientProjectPath = "client-flink/flink-1.16"
-  val flinkClientProjectName = "celeborn-client-flink-1_16"
-  val flinkClientShadedProjectPath: String = "client-flink/flink-1.16-shaded"
-  val flinkClientShadedProjectName: String = "celeborn-client-flink-1_16-shaded"
-
-  override val dependOnCommonTiered: Boolean = false
-}
-
-object Flink117 extends FlinkClientProjects {
-  val flinkVersion = "1.17.2"
-
-  // note that SBT does not allow using the period symbol (.) in project names.
-  val flinkClientProjectPath = "client-flink/flink-1.17"
-  val flinkClientProjectName = "celeborn-client-flink-1_17"
-  val flinkClientShadedProjectPath: String = "client-flink/flink-1.17-shaded"
-  val flinkClientShadedProjectName: String = "celeborn-client-flink-1_17-shaded"
-
-  override val dependOnCommonTiered: Boolean = false
-}
-
 object Flink118 extends FlinkClientProjects {
   val flinkVersion = "1.18.1"
 
@@ -1310,7 +1284,7 @@ object Flink119 extends FlinkClientProjects {
 }
 
 object Flink120 extends FlinkClientProjects {
-  val flinkVersion = "1.20.3"
+  val flinkVersion = "1.20.5"
 
   // note that SBT does not allow using the period symbol (.) in project names.
   val flinkClientProjectPath = "client-flink/flink-1.20"
@@ -1320,7 +1294,7 @@ object Flink120 extends FlinkClientProjects {
 }
 
 object Flink20 extends FlinkClientProjects {
-  val flinkVersion = "2.0.1"
+  val flinkVersion = "2.0.2"
 
   // note that SBT does not allow using the period symbol (.) in project names.
   val flinkClientProjectPath = "client-flink/flink-2.0"
@@ -1330,7 +1304,7 @@ object Flink20 extends FlinkClientProjects {
 }
 
 object Flink21 extends FlinkClientProjects {
-  val flinkVersion = "2.1.1"
+  val flinkVersion = "2.1.3"
 
   // note that SBT does not allow using the period symbol (.) in project names.
   val flinkClientProjectPath = "client-flink/flink-2.1"
@@ -1385,11 +1359,8 @@ trait FlinkClientProjects {
   //   1.20.3 -> 1.20
   //   1.19.3 -> 1.19
   //   1.18.1 -> 1.18
-  //   1.17.2 -> 1.17
-  //   1.16.3 -> 1.16
   lazy val flinkMajorVersion: String = flinkVersion.split("\\.").take(2).reduce(_ + "." + _)
 
-  // the output would be something like: celeborn-client-flink-1.17-shaded_2.12-0.4.0-SNAPSHOT.jar
   def flinkClientShadeJarName(
       revision: String,
       artifact: Artifact,
