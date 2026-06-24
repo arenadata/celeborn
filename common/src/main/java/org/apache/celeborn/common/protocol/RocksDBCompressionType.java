@@ -15,6 +15,16 @@
  * limitations under the License.
  */
 
-package org.apache.celeborn.plugin.flink;
+package org.apache.celeborn.common.protocol;
 
-public class RemoteShuffleServiceFactorySuiteJV116 extends RemoteShuffleServiceFactorySuiteJ {}
+public enum RocksDBCompressionType {
+  NO_COMPRESSION,
+  SNAPPY_COMPRESSION,
+  ZLIB_COMPRESSION,
+  BZLIB2_COMPRESSION,
+  LZ4_COMPRESSION,
+  LZ4HC_COMPRESSION,
+  XPRESS_COMPRESSION,
+  ZSTD_COMPRESSION,
+  DISABLE_COMPRESSION_OPTION;
+}
