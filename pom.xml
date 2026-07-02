@@ -192,10 +192,10 @@
     <mavenCentralName>Maven Central</mavenCentralName>
     <mavenCentralUrl>https://repo.maven.apache.org/maven2</mavenCentralUrl>
 
-    <distMgmtReleaseId>github</distMgmtReleaseId>
+    <distMgmtReleaseId>arenadata</distMgmtReleaseId>
     <distMgmtReleaseName>GitHub arenadata Apache Maven Packages</distMgmtReleaseName>
     <distMgmtReleaseUrl>https://maven.pkg.github.com/arenadata/celeborn</distMgmtReleaseUrl>
-    <distMgmtSnapshotsId>github</distMgmtSnapshotsId>
+    <distMgmtSnapshotsId>arenadata</distMgmtSnapshotsId>
     <distMgmtSnapshotsName>GitHub arenadata Apache Maven Packages</distMgmtSnapshotsName>
     <distMgmtSnapshotsUrl>https://maven.pkg.github.com/arenadata/celeborn</distMgmtSnapshotsUrl>
   </properties>
