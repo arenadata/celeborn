@@ -1671,7 +1671,7 @@
         <lz4-java.version>1.10.2</lz4-java.version>
         <scala.version>2.13.15</scala.version>
         <scala.binary.version>2.13</scala.binary.version>
-        <spark.version>3.5.4.4-4.3.0-1</spark.version>
+        <spark.version>3.5.4.4-4.3.0-2</spark.version>
         <zstd-jni.version>1.5.7-7</zstd-jni.version>
       </properties>
     </profile>
@@ -1730,7 +1730,7 @@
         <lz4-java.version>1.11.0</lz4-java.version>
         <scala.version>2.13.18</scala.version>
         <scala.binary.version>2.13</scala.binary.version>
-        <spark.version>4.2.0.1-4.3.0-1</spark.version>
+        <spark.version>4.2.0.1-4.3.0-2</spark.version>
         <zstd-jni.version>1.5.7-7</zstd-jni.version>
       </properties>
     </profile>
