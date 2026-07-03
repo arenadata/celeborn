@@ -48,8 +48,8 @@ RUN set -ex && \
     fi && \
     apt-get upgrade -y && \
     if [ -n "${custom_jdk_path}" ]; then \
-        update-alternatives --install /usr/bin/java java ${custom_jdk_path}/bin/java 100; \
-        update-alternatives --install /usr/bin/javac javac ${custom_jdk_path}/bin/javac 100; \
+        update-alternatives --install /usr/bin/java java ${custom_jdk_path}/bin/java 2000; \
+        update-alternatives --install /usr/bin/javac javac ${custom_jdk_path}/bin/javac 2000; \
     fi && \
     if [ -n "${additional_packages_repo}" ]; then \
         rm -f /etc/apt/sources.list.d/additional.list; \

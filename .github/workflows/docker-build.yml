@@ -6,41 +6,63 @@ on:
   workflow_dispatch:
     inputs:
       celeborn_version:
-        description: 'Celeborn version (e.g., 0.3.0)'
-        required: false # Making it optional for release triggers
+        description: 'Celeborn version override (default: project.version from the pom)'
+        required: false
         type: string
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
 
     steps:
-      - name: Set Celeborn Version
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 17
+          cache: maven
+          check-latest: false
+          server-id: arenadata
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
+
+      - name: Resolve Celeborn version
         id: set_version
         run: |
           if [[ "${{ github.event_name }}" == "release" ]]; then
             VERSION="${{ github.event.release.tag_name }}"
-            echo "VERSION=${VERSION#v}" >> $GITHUB_OUTPUT
-          else
+            VERSION="${VERSION#v}"
+          elif [[ -n "${{ github.event.inputs.celeborn_version }}" ]]; then
             VERSION="${{ github.event.inputs.celeborn_version }}"
-            echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          else
+            VERSION=$(build/mvn -q help:evaluate -Dexpression=project.version -DforceStdout)
           fi
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
 
-      - name: Download Celeborn Release
-        run: |
-          VERSION="${{ steps.set_version.outputs.VERSION }}"
-          wget https://downloads.apache.org/celeborn/celeborn-${VERSION}/apache-celeborn-${VERSION}-bin.tgz
-          tar -xzf apache-celeborn-${VERSION}-bin.tgz
+      # Build the server distribution on the runner. -Paws/-Pozone add S3 + Ozone storage
+      # support; the arenadata ozone dependency is resolved through the `arenadata` server
+      # configured above (GITHUB_TOKEN). Produces ./dist with the full server layout.
+      - name: Build distribution
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./build/make-distribution.sh -Pgoogle-mirror -Pjdk-17 -Paws -Pozone
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USER }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push
+      # Reuse docker/Dockerfile unchanged, with the exploded dist/ as the build context.
+      - name: Build and push server image to GHCR
+        env:
+          VERSION: ${{ steps.set_version.outputs.VERSION }}
         run: |
-          VERSION="${{ steps.set_version.outputs.VERSION }}"
-          cd apache-celeborn-${VERSION}-bin
-          docker buildx create --use
-          docker buildx build --push -f docker/Dockerfile --platform=linux/amd64,linux/arm64 -t apache/celeborn:${VERSION} .
+          docker build -f docker/Dockerfile -t "ghcr.io/arenadata/celeborn:${VERSION}" dist
+          docker push "ghcr.io/arenadata/celeborn:${VERSION}"
