@@ -1,0 +1,85 @@
+# Publishes Maven artifacts to GitHub Packages (maven.pkg.github.com/arenadata/celeborn)
+# when a GitHub Release is published. Deploys:
+#   - server: the default reactor (spi, common, client, service, master, worker,
+#     lifecycle-manager, cli, openapi-client), Scala 2.13
+#   - spark-3.5: the celeborn-client-spark-3-shaded_2.13 jar
+#   - spark-4.2: the celeborn-client-spark-4-shaded_2.13 jar
+#
+# Auth reuses the existing `arenadata` server-id (see maven.yml). The pom's
+# distributionManagement id defaults to `github`, which has no configured
+# credentials here, so it is overridden to `arenadata` on the command line.
+
+name: Publish Release Artifacts
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  server:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 17
+          cache: maven
+          check-latest: false
+          server-id: arenadata
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
+      - name: Deploy server artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          build/mvn -Pgoogle-mirror -Pjdk-17 -Paws -Pozone clean deploy -DskipTests \
+            -DdeployAtEnd=true
+
+  spark:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: spark-3.5
+            module: client-spark/spark-3-shaded
+          - profile: spark-4.2
+            module: client-spark/spark-4-shaded
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 17
+          cache: maven
+          check-latest: false
+          server-id: arenadata
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
+      - name: Build ${{ matrix.profile }} client
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          build/mvn -Pgoogle-mirror -P${{ matrix.profile }} -Pjdk-17 clean install -DskipTests \
+            -pl ${{ matrix.module }} -am
+      - name: Deploy ${{ matrix.profile }} client
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          build/mvn -Pgoogle-mirror -P${{ matrix.profile }} -Pjdk-17 deploy -DskipTests \
+            -pl ${{ matrix.module }} \
+            -DdeployAtEnd=true
