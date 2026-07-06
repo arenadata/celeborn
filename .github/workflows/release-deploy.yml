@@ -2,12 +2,16 @@
 # when a GitHub Release is published. Deploys:
 #   - server: the default reactor (spi, common, client, service, master, worker,
 #     lifecycle-manager, cli, openapi-client), Scala 2.13
-#   - spark-3.5: the celeborn-client-spark-3-shaded_2.13 jar
-#   - spark-4.2: the celeborn-client-spark-4-shaded_2.13 jar
+#   - spark-3.5: celeborn-client-spark-3.5-shaded_2.13
+#   - spark-4.2: celeborn-client-spark-4.2-shaded_2.13
 #
-# Auth reuses the existing `arenadata` server-id (see maven.yml). The pom's
-# distributionManagement id defaults to `github`, which has no configured
-# credentials here, so it is overridden to `arenadata` on the command line.
+# The Spark shaded modules build under their upstream major-versioned artifactId
+# (celeborn-client-spark-{3,4}-shaded); to keep artifacts distinguishable per Spark
+# minor, the jar is re-published under a minor-versioned coordinate via deploy:deploy-file
+# (the major coordinate is never pushed). The pom/make-distribution stay unchanged.
+#
+# Auth reuses the existing `arenadata` server-id (see maven.yml), which matches the pom's
+# distributionManagement id.
 
 name: Publish Release Artifacts
 
@@ -56,8 +60,14 @@ jobs:
         include:
           - profile: spark-3.5
             module: client-spark/spark-3-shaded
+            major: celeborn-client-spark-3-shaded
+            minor: celeborn-client-spark-3.5-shaded
+            scala: "2.13"
           - profile: spark-4.2
             module: client-spark/spark-4-shaded
+            major: celeborn-client-spark-4-shaded
+            minor: celeborn-client-spark-4.2-shaded
+            scala: "2.13"
     steps:
       - uses: actions/checkout@v4
       - name: Setup JDK 17
@@ -76,10 +86,20 @@ jobs:
         run: |
           build/mvn -Pgoogle-mirror -P${{ matrix.profile }} -Pjdk-17 clean install -DskipTests \
             -pl ${{ matrix.module }} -am
-      - name: Deploy ${{ matrix.profile }} client
+      - name: Publish ${{ matrix.profile }} client as minor coordinate
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          build/mvn -Pgoogle-mirror -P${{ matrix.profile }} -Pjdk-17 deploy -DskipTests \
-            -pl ${{ matrix.module }} \
-            -DdeployAtEnd=true
+          set -euo pipefail
+          VERSION=$(build/mvn -q help:evaluate -Dexpression=project.version -DforceStdout)
+          JAR=${{ matrix.module }}/target/${{ matrix.major }}_${{ matrix.scala }}-${VERSION}.jar
+          echo "Publishing ${{ matrix.minor }}_${{ matrix.scala }}:${VERSION} from ${JAR}"
+          build/mvn deploy:deploy-file \
+            -Dfile="${JAR}" \
+            -DgroupId=org.apache.celeborn \
+            -DartifactId=${{ matrix.minor }}_${{ matrix.scala }} \
+            -Dversion="${VERSION}" \
+            -Dpackaging=jar \
+            -DgeneratePom=true \
+            -DrepositoryId=arenadata \
+            -Durl=https://maven.pkg.github.com/arenadata/celeborn
