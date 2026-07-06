@@ -28,9 +28,9 @@ fullnameOverride: ""
 # Specifies the Celeborn image to use
 image:
   # -- Image registry
-  registry: docker.io
+  registry: ghcr.io
   # -- Image repository
-  repository: apache/celeborn
+  repository: arenadata/celeborn
   # -- Image tag, default is chart `appVersion`
   tag: ""
   # -- Image pull policy
