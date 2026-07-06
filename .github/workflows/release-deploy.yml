@@ -91,7 +91,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          VERSION=$(build/mvn -q help:evaluate -Dexpression=project.version -DforceStdout)
+          # `-DforceStdout` prints the version as the last stdout line; take only
+          # that line so any diagnostic the mvn wrapper prints can't corrupt it.
+          VERSION=$(build/mvn -q help:evaluate -Dexpression=project.version -DforceStdout | tail -n1)
           JAR=${{ matrix.module }}/target/${{ matrix.major }}_${{ matrix.scala }}-${VERSION}.jar
           echo "Publishing ${{ matrix.minor }}_${{ matrix.scala }}:${VERSION} from ${JAR}"
           build/mvn deploy:deploy-file \
