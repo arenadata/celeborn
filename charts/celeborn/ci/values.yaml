@@ -21,6 +21,9 @@
 
 # Specifies the Celeborn image to use
 image:
+  # -- Image registry (the CI builds `apache/celeborn:latest` locally and loads
+  # it into minikube, so pin docker.io regardless of the chart default registry)
+  registry: docker.io
   # -- Image repository
   repository: apache/celeborn
   # -- Image tag
