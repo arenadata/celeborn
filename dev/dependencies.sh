@@ -164,10 +164,6 @@ while (( "$#" )); do
 done
 
 case "$MODULE" in
-  "spark-2.4")
-    MVN_MODULES="client-spark/spark-2"
-    SBT_PROJECT="celeborn-client-spark-2"
-    ;;
   "spark-3"*)  # Match all versions starting with "spark-3"
     MVN_MODULES="client-spark/spark-3"
     SBT_PROJECT="celeborn-client-spark-3"
@@ -199,6 +195,10 @@ case "$MODULE" in
   "flink-2.2")
     MVN_MODULES="client-flink/flink-2.2"
     SBT_PROJECT="celeborn-client-flink-2_2"
+    ;;
+  "flink-2.3")
+    MVN_MODULES="client-flink/flink-2.3"
+    SBT_PROJECT="celeborn-client-flink-2_3"
     ;;
   "mr")
     MVN_MODULES="client-mr/mr"
