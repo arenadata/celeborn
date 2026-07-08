@@ -65,7 +65,7 @@
     <scala.binary.version>2.13</scala.binary.version>
     <maven.compiler.source>${java.version}</maven.compiler.source>
     <maven.compiler.target>${java.version}</maven.compiler.target>
-    <maven.version>3.9.14</maven.version>
+    <maven.version>3.9.16</maven.version>
 
     <flink.version>1.20.5</flink.version>
     <spark.version>3.3.4</spark.version>
@@ -1198,17 +1198,6 @@
               </goals>
               <phase>process-test-resources</phase>
             </execution>
-            <!--
-              CELEBORN-161: we must disable scaladocs to recover building for Spark 2.4
-              `build/mvn clean install -DskipTests -Pspark-2.4`
-            <execution>
-              <id>attach-scaladocs</id>
-              <goals>
-                <goal>doc-jar</goal>
-              </goals>
-              <phase>verify</phase>
-            </execution>
-            -->
           </executions>
         </plugin>
 
@@ -1467,59 +1456,6 @@
       </dependencies>
     </profile>
     <profile>
-      <id>hadoop-2</id>
-      <activation>
-        <property>
-          <name>hadoop.version</name>
-          <value>/^2\..*$/</value>
-        </property>
-      </activation>
-      <properties>
-        <hadoop-2-deps>true</hadoop-2-deps>
-      </properties>
-      <dependencies>
-        <dependency>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-client</artifactId>
-          <version>${hadoop.version}</version>
-          <exclusions>
-            <exclusion>
-              <groupId>org.apache.hadoop</groupId>
-              <artifactId>hadoop-annotations</artifactId>
-            </exclusion>
-            <exclusion>
-              <groupId>org.apache.hadoop</groupId>
-              <artifactId>hadoop-mapreduce-client-app</artifactId>
-            </exclusion>
-            <exclusion>
-              <groupId>org.apache.hadoop</groupId>
-              <artifactId>hadoop-mapreduce-client-core</artifactId>
-            </exclusion>
-            <exclusion>
-              <groupId>org.apache.hadoop</groupId>
-              <artifactId>hadoop-mapreduce-client-jobclient</artifactId>
-            </exclusion>
-            <exclusion>
-              <groupId>org.apache.hadoop</groupId>
-              <artifactId>hadoop-yarn-client</artifactId>
-            </exclusion>
-            <exclusion>
-              <groupId>org.apache.hadoop</groupId>
-              <artifactId>hadoop-yarn-registry</artifactId>
-            </exclusion>
-            <exclusion>
-              <groupId>org.apache.hadoop</groupId>
-              <artifactId>hadoop-yarn-server-common</artifactId>
-            </exclusion>
-            <exclusion>
-              <groupId>org.fusesource.leveldbjni</groupId>
-              <artifactId>leveldbjni-all</artifactId>
-            </exclusion>
-          </exclusions>
-        </dependency>
-      </dependencies>
-    </profile>
-    <profile>
       <id>aws</id>
       <modules>
         <module>multipart-uploader/multipart-uploader-s3</module>
@@ -1535,23 +1471,6 @@
       </modules>
       <properties>
         <aliyun-deps>true</aliyun-deps>
-      </properties>
-    </profile>
-    <profile>
-      <id>spark-2.4</id>
-      <modules>
-        <module>client-spark/common</module>
-        <module>client-spark/spark-2</module>
-        <module>client-spark/spark-2-shaded</module>
-        <module>tests/spark-it</module>
-      </modules>
-      <properties>
-        <lz4-java.group>org.lz4</lz4-java.group>
-        <lz4-java.version>1.4.0</lz4-java.version>
-        <scala.version>2.11.12</scala.version>
-        <scala.binary.version>2.11</scala.binary.version>
-        <spark.version>2.4.8</spark.version>
-        <zstd-jni.version>1.4.4-3</zstd-jni.version>
       </properties>
     </profile>
 
@@ -2011,6 +1930,26 @@
         <scala.binary.version>2.12</scala.binary.version>
         <scala.version>2.12.20</scala.version>
         <celeborn.flink.plugin.artifact>celeborn-client-flink-2.2_${scala.binary.version}</celeborn.flink.plugin.artifact>
+        <flink.streaming.artifact>flink-streaming-java</flink.streaming.artifact>
+        <flink.clients.artifact>flink-clients</flink.clients.artifact>
+        <flink.runtime.web.artifact>flink-runtime-web</flink.runtime.web.artifact>
+      </properties>
+    </profile>
+
+    <profile>
+      <id>flink-2.3</id>
+      <modules>
+        <module>client-flink/common</module>
+        <module>client-flink/common-tiered</module>
+        <module>client-flink/flink-2.3</module>
+        <module>client-flink/flink-2.3-shaded</module>
+        <module>tests/flink-it</module>
+      </modules>
+      <properties>
+        <flink.version>2.3.0</flink.version>
+        <flink.binary.version>2.3</flink.binary.version>
+        <scala.binary.version>2.12</scala.binary.version>
+        <celeborn.flink.plugin.artifact>celeborn-client-flink-2.3_${scala.binary.version}</celeborn.flink.plugin.artifact>
         <flink.streaming.artifact>flink-streaming-java</flink.streaming.artifact>
         <flink.clients.artifact>flink-clients</flink.clients.artifact>
         <flink.runtime.web.artifact>flink-runtime-web</flink.runtime.web.artifact>

@@ -374,7 +374,6 @@ if [ "$SBT_ENABLED" == "true" ]; then
   sbt_build_service "$@"
   if [ "$RELEASE" == "true" ]; then
     export JAVA_HOME=$JAVA8_HOME
-    sbt_build_client -Pspark-2.4
     sbt_build_client -Pspark-3.4
     sbt_build_client -Pspark-3.5
     export JAVA_HOME=$JAVA17_HOME
@@ -389,6 +388,7 @@ if [ "$SBT_ENABLED" == "true" ]; then
     sbt_build_client -Pflink-2.0
     sbt_build_client -Pflink-2.1
     sbt_build_client -Pflink-2.2
+    sbt_build_client -Pflink-2.3
     export JAVA_HOME=$JAVA8_HOME
     sbt_build_client -Pmr
 #    sbt_build_client -Ptez
@@ -417,7 +417,6 @@ else
   if [ "$RELEASE" == "true" ]; then
     build_service
     export JAVA_HOME=$JAVA8_HOME
-    build_spark_client -Pspark-2.4
     build_spark_client -Pspark-3.4
     build_spark_client -Pspark-3.5
     export JAVA_HOME=$JAVA17_HOME
@@ -432,6 +431,7 @@ else
     build_flink_client -Pflink-2.0
     build_flink_client -Pflink-2.1
     build_flink_client -Pflink-2.2
+    build_flink_client -Pflink-2.3
     export JAVA_HOME=$JAVA8_HOME
     build_mr_client -Pmr
     build_tez_client -Ptez

@@ -28,7 +28,6 @@ The following table indicates the compatibility of Celeborn Spark and Flink clie
 
 |            | Java 8/Scala 2.11 | Java 8/Scala 2.12 | Java 11/Scala 2.12 | Java 17/Scala 2.12 | Java 8/Scala 2.13 | Java 11/Scala 2.13 | Java 17/Scala 2.13 |
 |------------|-------------------|-------------------|--------------------|--------------------|-------------------|--------------------|--------------------|
-| Spark 2.4  | &#10004;          | &#10004;          | &#x274C;           | &#x274C;           | &#x274C;          | &#x274C;           | &#x274C;           |
 | Spark 3.0  | &#x274C;          | &#10004;          | &#10004;           | &#x274C;           | &#x274C;          | &#x274C;           | &#x274C;           |
 | Spark 3.1  | &#x274C;          | &#10004;          | &#10004;           | &#x274C;           | &#x274C;          | &#x274C;           | &#x274C;           |
 | Spark 3.2  | &#x274C;          | &#10004;          | &#10004;           | &#x274C;           | &#10004;          | &#10004;           | &#x274C;           |
@@ -44,6 +43,7 @@ The following table indicates the compatibility of Celeborn Spark and Flink clie
 | Flink 2.0  | &#x274C;          | &#x274C;          | &#10004;           | &#10004;           | &#x274C;          | &#10004;           | &#10004;           |
 | Flink 2.1  | &#x274C;          | &#x274C;          | &#10004;           | &#10004;           | &#x274C;          | &#10004;           | &#10004;           |
 | Flink 2.2  | &#x274C;          | &#x274C;          | &#10004;           | &#10004;           | &#x274C;          | &#10004;           | &#10004;           |
+| Flink 2.3  | &#x274C;          | &#x274C;          | &#10004;           | &#10004;           | &#x274C;          | &#10004;           | &#10004;           |
 
 ## Useful SBT commands
 
