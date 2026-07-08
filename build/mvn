@@ -91,7 +91,7 @@ install_mvn() {
       content_type=$(curl -L --output /dev/null --silent --head --max-time 30 --write-out '%{content_type}' "${APACHE_MIRROR}/${FILE_PATH}/${MVN_TARBALL}${MIRROR_URL_QUERY}")
       if [[ "$content_type" != application/* ]]; then
         # Fall back to archive.apache.org for older Maven
-        echo "Falling back to archive.apache.org to download Maven"
+        echo "Falling back to archive.apache.org to download Maven" 1>&2
         APACHE_MIRROR="https://archive.apache.org/dist"
         MIRROR_URL_QUERY=""
       fi
