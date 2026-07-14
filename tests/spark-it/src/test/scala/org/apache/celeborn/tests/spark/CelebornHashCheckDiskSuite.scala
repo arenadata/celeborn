@@ -21,16 +21,13 @@ import scala.collection.JavaConverters._
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.SparkSession
-import org.scalatest.Ignore
 import org.scalatest.concurrent.Eventually._
 import org.scalatest.time.SpanSugar.convertIntToGrainOfTime
 
-import org.apache.celeborn.client.ShuffleClient
 import org.apache.celeborn.common.CelebornConf
 import org.apache.celeborn.common.protocol.ShuffleMode
 import org.apache.celeborn.service.deploy.worker.Worker
 
-@Ignore
 class CelebornHashCheckDiskSuite extends SparkTestBase {
 
   var workers: collection.Set[Worker] = _
@@ -45,10 +42,11 @@ class CelebornHashCheckDiskSuite extends SparkTestBase {
   }
 
   override def beforeEach(): Unit = {
-    ShuffleClient.reset()
+    stopActiveSparkSessions()
   }
 
   override def afterEach(): Unit = {
+    stopActiveSparkSessions()
     System.gc()
   }
 
@@ -61,7 +59,7 @@ class CelebornHashCheckDiskSuite extends SparkTestBase {
     val combineResult = combine(sparkSession)
     val groupByResult = groupBy(sparkSession)
     val repartitionResult = repartition(sparkSession)
-    sparkSession.stop()
+    stopActiveSparkSessions()
 
     val sparkSessionEnableCeleborn = SparkSession.builder()
       .config(updateSparkConf(sparkConf, ShuffleMode.HASH))
