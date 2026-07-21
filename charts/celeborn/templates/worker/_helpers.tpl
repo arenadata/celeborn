@@ -32,6 +32,16 @@ app.kubernetes.io/role: worker
 {{- end }}
 
 {{/*
+Merged pod labels for Celeborn worker pods (global podLabels + worker.podLabels,
+role wins on conflict).
+*/}}
+{{- define "celeborn.worker.podLabels" -}}
+{{- $global := .Values.podLabels | default dict -}}
+{{- $role := .Values.worker.podLabels | default dict -}}
+{{- toYaml (merge (deepCopy $role) $global) -}}
+{{- end }}
+
+{{/*
 Create the name of the worker service to use
 */}}
 {{- define "celeborn.worker.service.name" -}}

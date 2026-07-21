@@ -32,6 +32,16 @@ app.kubernetes.io/role: master
 {{- end }}
 
 {{/*
+Merged pod labels for Celeborn master pods (global podLabels + master.podLabels,
+role wins on conflict).
+*/}}
+{{- define "celeborn.master.podLabels" -}}
+{{- $global := .Values.podLabels | default dict -}}
+{{- $role := .Values.master.podLabels | default dict -}}
+{{- toYaml (merge (deepCopy $role) $global) -}}
+{{- end }}
+
+{{/*
 Create the name of the master service to use
 */}}
 {{- define "celeborn.master.service.name" -}}

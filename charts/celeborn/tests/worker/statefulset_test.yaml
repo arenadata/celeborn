@@ -70,6 +70,44 @@ tests:
           path: spec.template.metadata.annotations.key2
           value: value2
 
+  - it: Should add extra pod labels if `worker.podLabels` is specified
+    template: worker/statefulset.yaml
+    set:
+      worker:
+        podLabels:
+          key1: value1
+          key2: value2
+    asserts:
+      - equal:
+          path: spec.template.metadata.labels.key1
+          value: value1
+      - equal:
+          path: spec.template.metadata.labels.key2
+          value: value2
+
+  - it: Should add global `podLabels` to worker pods
+    template: worker/statefulset.yaml
+    set:
+      podLabels:
+        global1: gvalue
+    asserts:
+      - equal:
+          path: spec.template.metadata.labels.global1
+          value: gvalue
+
+  - it: Should let `worker.podLabels` override the global `podLabels`
+    template: worker/statefulset.yaml
+    set:
+      podLabels:
+        shared: global
+      worker:
+        podLabels:
+          shared: role
+    asserts:
+      - equal:
+          path: spec.template.metadata.labels.shared
+          value: role
+
   - it: Should use the specified image if `image.registry`, `image.repository` and `image.tag` is set
     template: worker/statefulset.yaml
     set:
