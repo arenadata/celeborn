@@ -134,12 +134,23 @@ celeborn:
   celeborn.metrics.enabled: true
   celeborn.metrics.prometheus.path: /metrics/prometheus
 
+# -- Labels applied to all Celeborn pods (master and worker). Per-role
+# `master.podLabels` / `worker.podLabels` are merged on top and win on conflict.
+podLabels: {}
+# key1: value1
+# key2: value2
+
 master:
   # -- Number of Celeborn master replicas to deploy, should not less than 3.
   replicas: 3
 
   # -- Annotations for Celeborn master pods.
   annotations:
+  # key1: value1
+  # key2: value2
+
+  # -- Labels for Celeborn master pods (merged over the global `podLabels`, master wins).
+  podLabels: {}
   # key1: value1
   # key2: value2
 
@@ -282,6 +293,11 @@ worker:
 
   # -- Annotations for Celeborn worker pods.
   annotations:
+  # key1: value1
+  # key2: value2
+
+  # -- Labels for Celeborn worker pods (merged over the global `podLabels`, worker wins).
+  podLabels: {}
   # key1: value1
   # key2: value2
 

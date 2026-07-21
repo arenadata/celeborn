@@ -37,6 +37,9 @@ spec:
       labels:
         {{- include "celeborn.master.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/tag: {{ .Values.image.tag | quote }}
+        {{- with (include "celeborn.master.podLabels" . | fromYaml) }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       annotations:
         celeborn.apache.org/conf-hash: {{ include "celeborn.configChecksum" . }}
         {{- with .Values.master.annotations }}
