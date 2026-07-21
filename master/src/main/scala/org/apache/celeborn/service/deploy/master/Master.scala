@@ -599,6 +599,7 @@ private[celeborn] class Master(
         handleWorkerDecommission(context, workers, requestId))
 
     case pb: PbReviseLostShuffles =>
+      checkAuth(context, pb.getAppId)
       executeWithLeaderChecker(
         context,
         handleReviseLostShuffle(context, pb.getAppId, pb.getLostShufflesList, pb.getRequestId))
@@ -647,7 +648,10 @@ private[celeborn] class Master(
           context))
 
     case pb: PbApplicationMetaRequest =>
-      // This request is from a worker
+      // Workers fetch application meta over the internal channel, where no client id
+      // is set, so the check is a no-op for them; it only rejects an external
+      // application that asks for another application's secret.
+      checkAuth(context, pb.getAppId)
       executeWithLeaderChecker(context, handleRequestForApplicationMeta(context, pb))
 
     case pb: PbRemoveWorkersUnavailableInfo =>
