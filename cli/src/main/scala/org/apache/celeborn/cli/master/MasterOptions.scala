@@ -37,6 +37,11 @@ final class MasterOptions {
   @Option(names = Array("--show-cluster-shuffles"), description = Array("Show cluster shuffles"))
   private[master] var showClusterShuffles: Boolean = _
 
+  @Option(
+    names = Array("--unregister-shuffles"),
+    description = Array("Unregister shuffles from the service"))
+  private[master] var unregisterShuffles: Boolean = _
+
   @Option(names = Array("--exclude-worker"), description = Array("Exclude workers by ID"))
   private[master] var excludeWorkers: Boolean = _
 
@@ -103,6 +108,12 @@ final class MasterOptions {
 
   @Option(names = Array("--show-thread-dump"), description = Array("Show master thread dump"))
   private[master] var showThreadDump: Boolean = _
+
+  @Option(names = Array("--show-loggers"), description = Array("Show logger levels"))
+  private[master] var showLoggers: Boolean = _
+
+  @Option(names = Array("--set-loglevel"), description = Array("Set logger level"))
+  private[master] var setLogLevel: Boolean = _
 
   @Option(names = Array("--show-container-info"), description = Array("Show container info"))
   private[master] var showContainerInfo: Boolean = _

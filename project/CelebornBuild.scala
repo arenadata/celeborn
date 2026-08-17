@@ -47,7 +47,7 @@ object Dependencies {
   val commonsCryptoVersion = "1.0.0"
   val commonsIoVersion = "2.17.0"
   val commonsLoggingVersion = "1.1.3"
-  val commonsLang3Version = "3.17.0"
+  val commonsLang3Version = sparkClientProjects.map(_.commonsLang3Version).getOrElse("3.20.0")
   val commonsCollectionsVersion = "3.2.2"
   val findbugsVersion = "1.3.9"
   val guavaVersion = "33.1.0-jre"
@@ -142,6 +142,7 @@ object Dependencies {
   val ioDropwizardMetricsGraphite = "io.dropwizard.metrics" % "metrics-graphite" % metricsVersion excludeAll (
     ExclusionRule("com.rabbitmq", "amqp-client"))
   val ioDropwizardMetricsJvm = "io.dropwizard.metrics" % "metrics-jvm" % metricsVersion
+  val ioDropwizardMetricsJmx = "io.dropwizard.metrics" % "metrics-jmx" % metricsVersion
   val ioNetty = "io.netty" % "netty-all" % nettyVersion excludeAll(
     ExclusionRule("io.netty", "netty-codec-haproxy"),
     ExclusionRule("io.netty", "netty-codec-memcache"),
@@ -680,6 +681,7 @@ object CelebornCommon {
         Dependencies.ioDropwizardMetricsCore,
         Dependencies.ioDropwizardMetricsGraphite,
         Dependencies.ioDropwizardMetricsJvm,
+        Dependencies.ioDropwizardMetricsJmx,
         Dependencies.ioNetty,
         Dependencies.ioNettyEpollLinuxX8664,
         Dependencies.ioNettyEpollLinuxAarch64,
@@ -896,6 +898,7 @@ object Spark30 extends SparkClientProjects {
 
   val sparkVersion = "3.0.3"
   val zstdJniVersion = "1.4.4-3"
+  override val commonsLang3Version: String = "3.17.0"
 }
 
 object Spark31 extends SparkClientProjects {
@@ -910,6 +913,7 @@ object Spark31 extends SparkClientProjects {
 
   val sparkVersion = "3.1.3"
   val zstdJniVersion = "1.4.8-1"
+  override val commonsLang3Version: String = "3.17.0"
 }
 
 object Spark32 extends SparkClientProjects {
@@ -924,6 +928,7 @@ object Spark32 extends SparkClientProjects {
 
   val sparkVersion = "3.2.4"
   val zstdJniVersion = "1.5.0-4"
+  override val commonsLang3Version: String = "3.17.0"
 }
 
 object Spark33 extends SparkClientProjects {
@@ -941,6 +946,7 @@ object Spark33 extends SparkClientProjects {
   // val scalaBinaryVersion = "2.12"
   val sparkVersion = "3.3.4"
   val zstdJniVersion = "1.5.2-1"
+  override val commonsLang3Version: String = "3.17.0"
 }
 
 object Spark34 extends SparkClientProjects {
@@ -955,6 +961,7 @@ object Spark34 extends SparkClientProjects {
 
   val sparkVersion = "3.4.4"
   val zstdJniVersion = "1.5.2-5"
+  override val commonsLang3Version: String = "3.17.0"
 }
 
 object Spark35 extends SparkClientProjects {
@@ -970,6 +977,7 @@ object Spark35 extends SparkClientProjects {
   val sparkVersion = "3.5.4.4-4.3.0-1"
   val zstdJniVersion = "1.5.7-7"
   val scalaBinaryVersion = "2.13"
+  override val commonsLang3Version: String = "3.17.0"
 
   override val sparkColumnarShuffleVersion: String = "3.5"
 }
@@ -1038,6 +1046,7 @@ trait SparkClientProjects {
   val sparkProjectScalaVersion: String
   val sparkVersion: String
   val zstdJniVersion: String
+  val commonsLang3Version: String = "3.20.0"
 
   val includeColumnarShuffle: Boolean = true
 
