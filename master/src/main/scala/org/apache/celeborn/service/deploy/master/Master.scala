@@ -1156,8 +1156,16 @@ private[celeborn] class Master(
         statusSystem.handleAppLost(appId, requestId)
         quotaManager.handleAppLost(appId)
         logInfo(s"Removed application $appId")
-        if (remoteStorageDirs.isDefined) {
-          checkAndCleanExpiredAppDirsOnDFS(appId)
+        try {
+          if (remoteStorageDirs.isDefined) {
+            checkAndCleanExpiredAppDirsOnDFS(appId)
+          }
+        } catch {
+          // DFS cleanup is best-effort. Letting it escape kills this Runnable before the reply,
+          // and because the failure is only captured in the submit() Future it is never even
+          // logged: the client then blocks for masterClient.maxRetries * rpc.askTimeout on exit.
+          case e: Throwable =>
+            logError(s"Failed to clean expired app dirs on DFS for $appId.", e)
         }
         if (context != null) {
           context.reply(ApplicationLostResponse(StatusCode.SUCCESS))
@@ -1177,13 +1185,22 @@ private[celeborn] class Master(
       }
     }
     remoteStorageDirs.foreach(_.foreach {
-      case (_, dir) => processDir(dir, expiredDir)
+      case (storageType, dir) => processDir(storageType, dir, expiredDir)
     })
   }
 
-  private def processDir(dfsDir: String, expiredDir: String): Unit = {
+  private def processDir(
+      storageType: StorageInfo.Type,
+      dfsDir: String,
+      expiredDir: String): Unit = {
     val dfsWorkPath = new Path(dfsDir, conf.workerWorkingDir)
-    hadoopFs.asScala.map(_._2).filter(_.exists(dfsWorkPath)).foreach { fs =>
+    // Only the FileSystem registered for this storage type can serve this path. Probing every
+    // entry of hadoopFs instead throws "Wrong FS" as soon as more than one remote storage dir is
+    // configured (e.g. celeborn.storage.hdfs.dir + celeborn.storage.s3.dir).
+    val fs = hadoopFs.get(storageType)
+    if (fs == null) {
+      logWarning(s"No FileSystem for storage type $storageType, skip cleaning $dfsWorkPath.")
+    } else if (fs.exists(dfsWorkPath)) {
       if (expiredDir.nonEmpty) {
         val dirToDelete = new Path(dfsWorkPath, expiredDir)
         // delete specific app dir on application lost
