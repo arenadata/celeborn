@@ -63,7 +63,7 @@ object Dependencies {
   val jdkToolsVersion = "0.1"
   val metricsVersion = "4.2.25"
   val mockitoVersion = "4.11.0"
-  val nettyVersion = "4.2.13.Final"
+  val nettyVersion = "4.2.17.Final"
   val ratisVersion = "3.2.2"
   val roaringBitmapVersion = "1.0.6"
   val rocksdbJniVersion = "9.10.0"
@@ -1028,7 +1028,7 @@ object Spark42 extends SparkClientProjects {
 
   val sparkVersion = "4.2.0.1-4.3.0-1"
   val zstdJniVersion = "1.5.7-7"
-  val nettyVersion = "4.2.13.Final"
+  val nettyVersion = "4.2.17.Final"
   val scalaBinaryVersion = "2.13"
 
   override val sparkColumnarShuffleVersion: String = "4"
