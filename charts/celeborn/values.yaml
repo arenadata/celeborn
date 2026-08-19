@@ -134,7 +134,7 @@ celeborn:
   celeborn.metrics.enabled: true
   celeborn.metrics.prometheus.path: /metrics/prometheus
 
-# -- Labels applied to all Celeborn pods (master and worker). Per-role
+# -- Labels applied to all Celeborn pods (master and worker). Per-component
 # `master.podLabels` / `worker.podLabels` are merged on top and win on conflict.
 podLabels: {}
 # key1: value1
@@ -218,19 +218,15 @@ master:
 
   # -- Affinity for Celeborn master pods.
   affinity:
-    podAntiAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        - labelSelector:
-            matchExpressions:
-              - key: app.kubernetes.io/name
-                operator: In
-                values:
-                  - celeborn
-              - key: app.kubernetes.io/role
-                operator: In
-                values:
-                  - master
-          topologyKey: kubernetes.io/hostname
+  # podAntiAffinity:
+  #   requiredDuringSchedulingIgnoredDuringExecution:
+  #     - labelSelector:
+  #         matchExpressions:
+  #           - key: app.kubernetes.io/component
+  #             operator: In
+  #             values:
+  #               - master
+  #       topologyKey: kubernetes.io/hostname
 
   # -- Tolerations for Celeborn master pods.
   tolerations:
@@ -365,19 +361,15 @@ worker:
 
   # -- Affinity for Celeborn worker pods.
   affinity:
-    podAntiAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        - labelSelector:
-            matchExpressions:
-              - key: app.kubernetes.io/name
-                operator: In
-                values:
-                  - celeborn
-              - key: app.kubernetes.io/role
-                operator: In
-                values:
-                  - worker
-          topologyKey: kubernetes.io/hostname
+  # podAntiAffinity:
+  #   requiredDuringSchedulingIgnoredDuringExecution:
+  #     - labelSelector:
+  #         matchExpressions:
+  #           - key: app.kubernetes.io/component
+  #             operator: In
+  #             values:
+  #               - worker
+  #       topologyKey: kubernetes.io/hostname
 
   # -- Tolerations for Celeborn worker pods.
   tolerations:

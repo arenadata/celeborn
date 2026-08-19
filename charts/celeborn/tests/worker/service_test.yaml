@@ -36,7 +36,7 @@ tests:
   - it: Should have label selectors for worker
     asserts:
       - equal:
-          path: spec.selector["app.kubernetes.io/role"]
+          path: spec.selector["app.kubernetes.io/component"]
           value: worker
 
   - it: Should create worker service with the specified service type

@@ -36,7 +36,7 @@ tests:
   - it: Should have label selectors for master
     asserts:
       - equal:
-          path: spec.selector["app.kubernetes.io/role"]
+          path: spec.selector["app.kubernetes.io/component"]
           value: master
 
   - it: Should create master service with the specified service type and port

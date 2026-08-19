@@ -20,7 +20,7 @@ Common labels for Celeborn worker resources
 */}}
 {{- define "celeborn.worker.labels" -}}
 {{ include "celeborn.labels" . }}
-app.kubernetes.io/role: worker
+app.kubernetes.io/component: worker
 {{- end }}
 
 {{/*
@@ -28,17 +28,17 @@ Selector labels for Celeborn worker pods
 */}}
 {{- define "celeborn.worker.selectorLabels" -}}
 {{ include "celeborn.selectorLabels" . }}
-app.kubernetes.io/role: worker
+app.kubernetes.io/component: worker
 {{- end }}
 
 {{/*
 Merged pod labels for Celeborn worker pods (global podLabels + worker.podLabels,
-role wins on conflict).
+component wins on conflict).
 */}}
 {{- define "celeborn.worker.podLabels" -}}
 {{- $global := .Values.podLabels | default dict -}}
-{{- $role := .Values.worker.podLabels | default dict -}}
-{{- toYaml (merge (deepCopy $role) $global) -}}
+{{- $component := .Values.worker.podLabels | default dict -}}
+{{- toYaml (merge (deepCopy $component) $global) -}}
 {{- end }}
 
 {{/*
