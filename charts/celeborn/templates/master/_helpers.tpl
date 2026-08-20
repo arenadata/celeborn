@@ -20,7 +20,7 @@ Common labels for Celeborn master resources
 */}}
 {{- define "celeborn.master.labels" -}}
 {{ include "celeborn.labels" . }}
-app.kubernetes.io/role: master
+app.kubernetes.io/component: master
 {{- end }}
 
 {{/*
@@ -28,17 +28,17 @@ Selector labels for Celeborn master pods
 */}}
 {{- define "celeborn.master.selectorLabels" -}}
 {{ include "celeborn.selectorLabels" . }}
-app.kubernetes.io/role: master
+app.kubernetes.io/component: master
 {{- end }}
 
 {{/*
 Merged pod labels for Celeborn master pods (global podLabels + master.podLabels,
-role wins on conflict).
+component wins on conflict).
 */}}
 {{- define "celeborn.master.podLabels" -}}
 {{- $global := .Values.podLabels | default dict -}}
-{{- $role := .Values.master.podLabels | default dict -}}
-{{- toYaml (merge (deepCopy $role) $global) -}}
+{{- $component := .Values.master.podLabels | default dict -}}
+{{- toYaml (merge (deepCopy $component) $global) -}}
 {{- end }}
 
 {{/*

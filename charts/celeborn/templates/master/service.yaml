@@ -35,7 +35,7 @@ metadata:
 spec:
   selector:
     {{- include "celeborn.selectorLabels" $ | nindent 4 }}
-    app.kubernetes.io/role: master
+    app.kubernetes.io/component: master
     apps.kubernetes.io/pod-index: "{{ $i }}"
   ports:
   - port: {{ $.Values.additionalNodePortServicePerReplica.port }}
