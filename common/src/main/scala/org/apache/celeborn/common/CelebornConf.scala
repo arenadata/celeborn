@@ -2785,6 +2785,16 @@ object CelebornConf extends Logging {
       .toSequence
       .createWithDefault(Nil)
 
+  val MASTER_HTTP_SSL_SNI_HOST_CHECK_ENABLED: ConfigEntry[Boolean] =
+    buildConf("celeborn.master.http.ssl.sni.host.check.enabled")
+      .categories("master")
+      .version("0.7.0")
+      .doc("Whether the HTTP Host header must match a name in the SSL certificate. Enabling this " +
+        "rejects requests addressed by IP address, such as Kubernetes metric scrapes of pod IPs, " +
+        "with 400 Invalid SNI.")
+      .booleanConf
+      .createWithDefault(false)
+
   val HA_ENABLED: ConfigEntry[Boolean] =
     buildConf("celeborn.master.ha.enabled")
       .withAlternative("celeborn.ha.enabled")
@@ -3725,6 +3735,16 @@ object CelebornConf extends Logging {
       .stringConf
       .toSequence
       .createWithDefault(Nil)
+
+  val WORKER_HTTP_SSL_SNI_HOST_CHECK_ENABLED: ConfigEntry[Boolean] =
+    buildConf("celeborn.worker.http.ssl.sni.host.check.enabled")
+      .categories("worker")
+      .version("0.7.0")
+      .doc("Whether the HTTP Host header must match a name in the SSL certificate. Enabling this " +
+        "rejects requests addressed by IP address, such as Kubernetes metric scrapes of pod IPs, " +
+        "with 400 Invalid SNI.")
+      .booleanConf
+      .createWithDefault(false)
 
   val WORKER_RPC_PORT: ConfigEntry[Int] =
     buildConf("celeborn.worker.rpc.port")

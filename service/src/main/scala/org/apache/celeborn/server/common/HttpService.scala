@@ -209,7 +209,8 @@ abstract class HttpService extends Service with Logging {
       httpSslKeyStoreType(),
       httpSslKeyStoreAlgorithm(),
       httpSslDisallowedProtocols(),
-      httpSslIncludedCipherSuites())
+      httpSslIncludedCipherSuites(),
+      httpSslSniHostCheckEnabled())
     startInternal()
     // block until the HTTP server is started, otherwise, we may get
     // the wrong HTTP server port -1
@@ -328,6 +329,15 @@ abstract class HttpService extends Service with Logging {
         conf.get(CelebornConf.MASTER_HTTP_SSL_INCLUDE_CIPHER_SUITES)
       case Service.WORKER =>
         conf.get(CelebornConf.WORKER_HTTP_SSL_INCLUDE_CIPHER_SUITES)
+    }
+  }
+
+  private def httpSslSniHostCheckEnabled(): Boolean = {
+    serviceName match {
+      case Service.MASTER =>
+        conf.get(CelebornConf.MASTER_HTTP_SSL_SNI_HOST_CHECK_ENABLED)
+      case Service.WORKER =>
+        conf.get(CelebornConf.WORKER_HTTP_SSL_SNI_HOST_CHECK_ENABLED)
     }
   }
 

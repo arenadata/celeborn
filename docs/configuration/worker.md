@@ -134,6 +134,7 @@ license: |
 | celeborn.worker.http.ssl.keystore.password | &lt;undefined&gt; | false | SSL certificate keystore password. | 0.6.0 |  | 
 | celeborn.worker.http.ssl.keystore.path | &lt;undefined&gt; | false | SSL certificate keystore location. | 0.6.0 |  | 
 | celeborn.worker.http.ssl.keystore.type | &lt;undefined&gt; | false | SSL certificate keystore type. | 0.6.0 |  | 
+| celeborn.worker.http.ssl.sni.host.check.enabled | false | false | Whether the HTTP Host header must match a name in the SSL certificate. Enabling this rejects requests addressed by IP address, such as Kubernetes metric scrapes of pod IPs, with 400 Invalid SNI. | 0.7.0 |  | 
 | celeborn.worker.http.stopTimeout | 5s | false | Worker http server stop timeout. | 0.5.0 |  | 
 | celeborn.worker.internal.port | 0 | false | Internal server port on the Worker where the master nodes connect. | 0.5.0 |  | 
 | celeborn.worker.jvmProfiler.enabled | false | false | Turn on code profiling via async_profiler in workers. | 0.5.0 |  | 
