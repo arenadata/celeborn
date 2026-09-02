@@ -22,7 +22,7 @@ import scala.util.Try
 import org.apache.commons.lang3.SystemUtils
 import org.eclipse.jetty.ee8.servlet.ServletContextHandler
 import org.eclipse.jetty.http.HttpVersion
-import org.eclipse.jetty.server.{HttpConfiguration, HttpConnectionFactory, Server, ServerConnector, SslConnectionFactory}
+import org.eclipse.jetty.server.{HttpConfiguration, HttpConnectionFactory, SecureRequestCustomizer, Server, ServerConnector, SslConnectionFactory}
 import org.eclipse.jetty.server.handler.{ContextHandlerCollection, ErrorHandler}
 import org.eclipse.jetty.util.component.LifeCycle
 import org.eclipse.jetty.util.ssl.SslContextFactory
@@ -127,7 +127,8 @@ object HttpServer extends Logging {
       keyStoreType: Option[String],
       keyStoreAlgorithm: Option[String],
       sslDisallowedProtocols: Seq[String],
-      sslIncludeCipherSuites: Seq[String]): HttpServer = {
+      sslIncludeCipherSuites: Seq[String],
+      sslSniHostCheckEnabled: Boolean): HttpServer = {
     val pool = new QueuedThreadPool(math.max(poolSize, 8))
     pool.setName(s"$role-JettyThreadPool")
     pool.setDaemon(true)
@@ -167,6 +168,11 @@ object HttpServer extends Logging {
         sslContextFactory.setKeyStorePassword(keyStorePassword.get)
         keyStoreType.foreach(sslContextFactory.setKeyStoreType)
         keyStoreAlgorithm.foreach(sslContextFactory.setKeyManagerFactoryAlgorithm)
+
+        // Register the customizer so that SslConnectionFactory does not auto-inject one with
+        // sniHostCheck enabled, which rejects requests addressed by IP with "400 Invalid SNI".
+        logInfo(s"HTTP Server SSL: sniHostCheck = $sslSniHostCheckEnabled")
+        httpConf.addCustomizer(new SecureRequestCustomizer(sslSniHostCheckEnabled))
 
         new ServerConnector(
           server,

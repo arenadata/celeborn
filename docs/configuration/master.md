@@ -68,6 +68,7 @@ license: |
 | celeborn.master.http.ssl.keystore.password | &lt;undefined&gt; | false | SSL certificate keystore password. | 0.6.0 |  | 
 | celeborn.master.http.ssl.keystore.path | &lt;undefined&gt; | false | SSL certificate keystore location. | 0.6.0 |  | 
 | celeborn.master.http.ssl.keystore.type | &lt;undefined&gt; | false | SSL certificate keystore type. | 0.6.0 |  | 
+| celeborn.master.http.ssl.sni.host.check.enabled | false | false | Whether the HTTP Host header must match a name in the SSL certificate. Enabling this rejects requests addressed by IP address, such as Kubernetes metric scrapes of pod IPs, with 400 Invalid SNI. | 0.7.0 |  | 
 | celeborn.master.http.stopTimeout | 5s | false | Master http server stop timeout. | 0.5.0 |  | 
 | celeborn.master.internal.port | 8097 | false | Internal port on the master where both workers and other master nodes connect. | 0.5.0 |  | 
 | celeborn.master.persist.workerNetworkLocation | false | false |  | 0.6.0 |  | 
