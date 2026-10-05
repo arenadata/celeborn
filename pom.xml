@@ -1620,7 +1620,6 @@
         <scala.binary.version>2.13</scala.binary.version>
         <spark.version>3.5.4.5-4.4.0-1</spark.version>
         <zstd-jni.version>1.5.7-7</zstd-jni.version>
-        <commons-lang3.version>3.17.0</commons-lang3.version>
       </properties>
     </profile>
 
