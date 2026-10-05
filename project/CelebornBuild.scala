@@ -974,7 +974,7 @@ object Spark35 extends SparkClientProjects {
   val lz4JavaVersion = "1.10.2"
   val sparkProjectScalaVersion = "2.13.15"
 
-  val sparkVersion = "3.5.4.4-4.3.0-1"
+  val sparkVersion = "3.5.4.5-4.4.0-1"
   val zstdJniVersion = "1.5.7-7"
   val scalaBinaryVersion = "2.13"
   override val commonsLang3Version: String = "3.17.0"
@@ -1026,7 +1026,7 @@ object Spark42 extends SparkClientProjects {
   val lz4JavaVersion = "1.11.0"
   val sparkProjectScalaVersion = "2.13.18"
 
-  val sparkVersion = "4.2.0.1-4.3.0-1"
+  val sparkVersion = "4.2.0.2-4.4.0-1"
   val zstdJniVersion = "1.5.7-7"
   val nettyVersion = "4.2.17.Final"
   val scalaBinaryVersion = "2.13"

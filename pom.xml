@@ -71,7 +71,7 @@
     <spark.version>3.3.4</spark.version>
 
     <!-- use hadoop-3 as default  -->
-    <hadoop.version>3.4.3.1-4.3.0-1</hadoop.version>
+    <hadoop.version>3.4.3.2-4.4.0-1</hadoop.version>
     <ozone.version>2.1.0.1-4.3.0-5</ozone.version>
     <aws.java.sdk.v2.version>2.35.4</aws.java.sdk.v2.version>
     <aliyun-sdk-oss.version>3.13.0</aliyun-sdk-oss.version>
@@ -1618,7 +1618,7 @@
         <lz4-java.version>1.10.2</lz4-java.version>
         <scala.version>2.13.15</scala.version>
         <scala.binary.version>2.13</scala.binary.version>
-        <spark.version>3.5.4.4-4.3.0-2</spark.version>
+        <spark.version>3.5.4.5-4.4.0-1</spark.version>
         <zstd-jni.version>1.5.7-7</zstd-jni.version>
         <commons-lang3.version>3.17.0</commons-lang3.version>
       </properties>
@@ -1688,7 +1688,7 @@
         <lz4-java.version>1.11.0</lz4-java.version>
         <scala.version>2.13.18</scala.version>
         <scala.binary.version>2.13</scala.binary.version>
-        <spark.version>4.2.0.1-4.3.0-2</spark.version>
+        <spark.version>4.2.0.2-4.4.0-1</spark.version>
         <zstd-jni.version>1.5.7-7</zstd-jni.version>
       </properties>
       <dependencyManagement>
@@ -1912,7 +1912,7 @@
         <module>tests/flink-it</module>
       </modules>
       <properties>
-        <flink.version>1.20.4.1-4.3.0-0</flink.version>
+        <flink.version>1.20.4.2-4.4.0-1</flink.version>
         <flink.binary.version>1.20</flink.binary.version>
         <scala.binary.version>2.12</scala.binary.version>
         <scala.version>2.12.7</scala.version>
@@ -1973,7 +1973,7 @@
         <module>tests/flink-it</module>
       </modules>
       <properties>
-        <flink.version>2.2.1.1-4.3.0-0</flink.version>
+        <flink.version>2.2.1.2-4.4.0-1</flink.version>
         <flink.binary.version>2.2</flink.binary.version>
         <scala.binary.version>2.12</scala.binary.version>
         <scala.version>2.12.20</scala.version>
