@@ -482,6 +482,25 @@
             <groupId>org.jctools</groupId>
             <artifactId>jctools-core</artifactId>
           </exclusion>
+          <!-- Netty 4.2 merged the QUIC/HTTP3 stack into netty-all:
+               netty-codec-http3 -> netty-codec-classes-quic -> netty-codec-native-quic.
+               netty-codec-native-quic ships a libnetty_quiche42_* native library per
+               platform classifier (linux/osx/windows x86_64/aarch_64), ~29MB
+               uncompressed, which every *-shaded module pulls in via
+               <include>io.netty:*</include> in the shade config. Celeborn only uses
+               Netty TCP RPC and has no HTTP/3 code path, so exclude the whole trio. -->
+          <exclusion>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-http3</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-classes-quic</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-native-quic</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
       <dependency>
@@ -1061,14 +1080,14 @@
             </includes>
             <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
             <argLine>${argLine} -ea -Xmx4g -Xss4m -XX:MaxMetaspaceSize=2g -XX:ReservedCodeCacheSize=128m ${extraJavaTestArgs}</argLine>
-            <systemProperties>
+            <systemPropertyVariables>
               <log4j.configuration>file:src/test/resources/log4j.properties</log4j.configuration>
               <log4j2.configurationFile>src/test/resources/log4j2-test.xml</log4j2.configurationFile>
               <java.io.tmpdir>${project.build.directory}/tmp</java.io.tmpdir>
               <spark.driver.memory>8g</spark.driver.memory>
               <spark.shuffle.sort.io.plugin.class>${spark.shuffle.plugin.class}</spark.shuffle.sort.io.plugin.class>
               <spark.ui.enabled>false</spark.ui.enabled>
-            </systemProperties>
+            </systemPropertyVariables>
             <environmentVariables>
               <CELEBORN_LOCAL_HOSTNAME>localhost</CELEBORN_LOCAL_HOSTNAME>
               <FLINK_VERSION>${flink.version}</FLINK_VERSION>
