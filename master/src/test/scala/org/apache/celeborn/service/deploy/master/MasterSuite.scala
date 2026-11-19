@@ -19,9 +19,11 @@ package org.apache.celeborn.service.deploy.master
 
 import java.nio.file.Files
 import java.util
+import java.util.concurrent.TimeUnit
 
 import org.mockito.ArgumentCaptor
-import org.mockito.Mockito.{mock, verify, when}
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.{mock, timeout, times, verify, when}
 import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach}
 import org.scalatest.funsuite.AnyFunSuite
 
@@ -29,7 +31,7 @@ import org.apache.celeborn.common.CelebornConf
 import org.apache.celeborn.common.identity.UserIdentifier
 import org.apache.celeborn.common.network.client.{RpcResponseCallback, TransportClient}
 import org.apache.celeborn.common.protocol.{PbApplicationMetaRequest, PbCheckForWorkerTimeout, PbRegisterWorker}
-import org.apache.celeborn.common.protocol.message.ControlMessages.{RequestSlots, RequestSlotsResponse, ReviseLostShuffles}
+import org.apache.celeborn.common.protocol.message.ControlMessages.{ApplicationLostResponse, RequestSlots, RequestSlotsResponse, ReviseLostShuffles}
 import org.apache.celeborn.common.protocol.message.StatusCode
 import org.apache.celeborn.common.rpc.{RpcAddress, RpcCallContext}
 import org.apache.celeborn.common.rpc.netty.{NettyRpcEnv, RemoteNettyRpcCallContext}
@@ -56,6 +58,101 @@ class MasterSuite extends AnyFunSuite
     val tmpDir = Files.createTempDirectory(null).toFile
     tmpDir.deleteOnExit()
     tmpDir.getAbsolutePath
+  }
+
+  // Builds a master that serves a `blockfs` storage dir resolved to BlockingFileSystem
+  // through the `celeborn.hadoop.fs.blockfs.impl` config property (copied into the Hadoop
+  // configuration by CelebornHadoopUtils.appendSparkHadoopConfigs).
+  private def masterWithBlockFs(): Master = {
+    val conf = new CelebornConf()
+    val randomMasterPort = selectRandomPort()
+    val randomHttpPort = selectRandomPort()
+    conf.set(CelebornConf.HA_ENABLED.key, "false")
+    conf.set(CelebornConf.HA_MASTER_RATIS_STORAGE_DIR.key, getTmpDir())
+    conf.set(CelebornConf.WORKER_STORAGE_DIRS.key, getTmpDir())
+    conf.set(CelebornConf.MASTER_HTTP_HOST.key, "127.0.0.1")
+    conf.set(CelebornConf.MASTER_HTTP_PORT.key, randomHttpPort.toString)
+    conf.set(CelebornConf.ACTIVE_STORAGE_TYPES.key, "HDFS")
+    conf.set(CelebornConf.HDFS_DIR.key, s"blockfs://${BlockingFileSystem.AUTHORITY}/celeborn")
+    conf.set("celeborn.hadoop.fs.blockfs.impl", classOf[BlockingFileSystem].getName)
+
+    val masterArgs =
+      new MasterArguments(Array("-h", "localhost", "-p", randomMasterPort.toString), conf)
+    new Master(conf, masterArgs)
+  }
+
+  test("ApplicationLost replies before the DFS cleanup (NGSOK-2548)") {
+    withRetryOnPortBindException { () =>
+      val master = masterWithBlockFs()
+      val context = mock(classOf[RpcCallContext])
+      val context2 = mock(classOf[RpcCallContext])
+
+      // The master must reply to the client BEFORE the DFS cleanup finishes: the cleanup
+      // deletes the app dir over the storage gateway and can take minutes, while the client
+      // times out its ask after celeborn.masterClient.rpc.askTimeout and retries the whole
+      // ApplicationLost up to celeborn.masterClient.maxRetries times, which blocks
+      // SparkContext.stop() on the driver (NGSOK-2548).
+      BlockingFileSystem.reset()
+      try {
+        master.handleApplicationLost(context, "app1", "req-1")
+        verify(context, timeout(10000)).reply(ApplicationLostResponse(StatusCode.SUCCESS))
+        assert(
+          BlockingFileSystem.ENTERED.await(10, TimeUnit.SECONDS),
+          "the cleanup must have entered the blocked FileSystem")
+        assert(
+          BlockingFileSystem.deletedEmpty,
+          "no file may be deleted while the cleanup is still blocked")
+
+        // A second application lost while the first cleanup is still blocked must also
+        // be replied to immediately (the cleanup threads park independently).
+        master.handleApplicationLost(context2, "app2", "req-2")
+        verify(context2, timeout(10000)).reply(ApplicationLostResponse(StatusCode.SUCCESS))
+
+        // While the cleanups are parked, simulate the application re-registering with the
+        // same appId: the cleanup must skip its dir instead of deleting fresh data.
+        master.statusSystem.appHeartbeatTime.put("app1", System.currentTimeMillis())
+
+        BlockingFileSystem.RELEASE.countDown()
+        // Both cleanup threads park on the same latch and are released together; collect
+        // the deletions without discarding any of them (arrival order is not deterministic).
+        val deletedNames =
+          (1 to 2).flatMap(_ => Option(BlockingFileSystem.pollAny(10)).map(_.getName)).toSet
+        assert(deletedNames == Set("app2"), s"deleted: $deletedNames")
+        verify(context, times(1)).reply(any[ApplicationLostResponse])
+        verify(context2, times(1)).reply(any[ApplicationLostResponse])
+      } finally {
+        BlockingFileSystem.RELEASE.countDown()
+        BlockingFileSystem.reset()
+        master.rpcEnv.shutdown()
+      }
+    }
+  }
+
+  test("ApplicationLost without remote storage replies and skips the cleanup (NGSOK-2548)") {
+    withRetryOnPortBindException { () =>
+      BlockingFileSystem.reset()
+      val conf = new CelebornConf()
+      val randomMasterPort = selectRandomPort()
+      val randomHttpPort = selectRandomPort()
+      conf.set(CelebornConf.HA_ENABLED.key, "false")
+      conf.set(CelebornConf.HA_MASTER_RATIS_STORAGE_DIR.key, getTmpDir())
+      conf.set(CelebornConf.WORKER_STORAGE_DIRS.key, getTmpDir())
+      conf.set(CelebornConf.MASTER_HTTP_HOST.key, "127.0.0.1")
+      conf.set(CelebornConf.MASTER_HTTP_PORT.key, randomHttpPort.toString)
+
+      val masterArgs =
+        new MasterArguments(Array("-h", "localhost", "-p", randomMasterPort.toString), conf)
+      val master = new Master(conf, masterArgs)
+      val context = mock(classOf[RpcCallContext])
+
+      try {
+        master.handleApplicationLost(context, "app1", "req-1")
+        verify(context, timeout(10000)).reply(ApplicationLostResponse(StatusCode.SUCCESS))
+        assert(BlockingFileSystem.deletedEmpty, "no FS must be touched without remote storage")
+      } finally {
+        master.rpcEnv.shutdown()
+      }
+    }
   }
 
   test("test single node startup functionality") {
