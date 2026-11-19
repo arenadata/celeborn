@@ -1156,19 +1156,21 @@ private[celeborn] class Master(
         statusSystem.handleAppLost(appId, requestId)
         quotaManager.handleAppLost(appId)
         logInfo(s"Removed application $appId")
-        try {
-          if (remoteStorageDirs.isDefined) {
-            checkAndCleanExpiredAppDirsOnDFS(appId)
-          }
-        } catch {
-          // DFS cleanup is best-effort. Letting it escape kills this Runnable before the reply,
-          // and because the failure is only captured in the submit() Future it is never even
-          // logged: the client then blocks for masterClient.maxRetries * rpc.askTimeout on exit.
-          case e: Throwable =>
-            logError(s"Failed to clean expired app dirs on DFS for $appId.", e)
-        }
+        // Reply before the DFS cleanup: deleting an expired app dir over S3/OSS gateways
+        // can take minutes, while the client asks with celeborn.masterClient.rpc.askTimeout
+        // and retries the whole ApplicationLost up to celeborn.masterClient.maxRetries -
+        // replying after the cleanup blocks SparkContext.stop() on the driver for
+        // maxRetries * askTimeout. The cleanup below stays best-effort and is logged.
         if (context != null) {
           context.reply(ApplicationLostResponse(StatusCode.SUCCESS))
+        }
+        if (remoteStorageDirs.isDefined) {
+          try {
+            checkAndCleanExpiredAppDirsOnDFS(appId)
+          } catch {
+            case e: Throwable =>
+              logError(s"Failed to clean expired app dirs on DFS for $appId.", e)
+          }
         }
       }
     })
