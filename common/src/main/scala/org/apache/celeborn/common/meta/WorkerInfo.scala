@@ -214,7 +214,11 @@ class WorkerInfo(
       for (newDisk <- newDiskInfos.values().asScala) {
         val mountPoint: String = newDisk.mountPoint
         val curDisk = diskInfos.get(mountPoint)
-        if (estimatedPartitionSize.nonEmpty && !newDisk.storageType.isDFS) {
+        // Recompute slots for every disk type, including remote/DFS mounts:
+        // slots are not carried in PbDiskInfo, so skipping the recompute for DFS
+        // lets the copy below zero out the slots computed at registration
+        // (CELEBORN-2257 regression, see NGSOK-2543).
+        if (estimatedPartitionSize.nonEmpty) {
           newDisk.maxSlots = newDisk.totalSpace / estimatedPartitionSize.get
           newDisk.availableSlots = newDisk.actualUsableSpace / estimatedPartitionSize.get
         }

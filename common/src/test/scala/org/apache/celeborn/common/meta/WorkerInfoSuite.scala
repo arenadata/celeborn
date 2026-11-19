@@ -32,10 +32,11 @@ import org.apache.celeborn.CelebornFunSuite
 import org.apache.celeborn.common.CelebornConf
 import org.apache.celeborn.common.identity.UserIdentifier
 import org.apache.celeborn.common.metrics.source.Role
+import org.apache.celeborn.common.protocol.StorageInfo
 import org.apache.celeborn.common.protocol.TransportModuleConstants
 import org.apache.celeborn.common.quota.ResourceConsumption
 import org.apache.celeborn.common.rpc.{RpcAddress, RpcEndpointAddress, RpcEnv}
-import org.apache.celeborn.common.util.{JavaUtils, ThreadUtils}
+import org.apache.celeborn.common.util.{JavaUtils, PbSerDeUtils, ThreadUtils}
 
 class WorkerInfoSuite extends CelebornFunSuite {
 
@@ -427,5 +428,52 @@ class WorkerInfoSuite extends CelebornFunSuite {
 
     val hashCode2 = workerInfo.hashCode()
     assert(hashCode1 === hashCode2)
+  }
+
+  test("DFS disk slots survive a heartbeat round-trip (CELEBORN-2257 regression)") {
+    val estimatedPartitionSize = 64L * 1024 * 1024
+    val dfsDisk = new DiskInfo("HDFS", Long.MaxValue, 999999, 999999, 0, StorageInfo.Type.HDFS)
+    val disks = new util.HashMap[String, DiskInfo]()
+    disks.put(dfsDisk.mountPoint, dfsDisk)
+    val worker = new WorkerInfo("localhost", 10000, 10001, 10002, 10003, 10004, disks, null)
+
+    // Registration: the master computes slots for every disk, DFS mounts included.
+    worker.updateDiskSlots(estimatedPartitionSize)
+    assert(worker.totalAvailableSlots() > 0)
+
+    // Heartbeat: PbDiskInfo carries no maxSlots/availableSlots, so the wire round-trip
+    // delivers disks with zero slots; the master must recompute them instead of copying.
+    val heartbeatDisks = new util.HashMap[String, DiskInfo]()
+    worker.diskInfos.asScala.foreach { case (mountPoint, disk) =>
+      heartbeatDisks.put(
+        mountPoint,
+        PbSerDeUtils.fromPbDiskInfo(PbSerDeUtils.toPbDiskInfo(disk)))
+    }
+    assert(heartbeatDisks.get("HDFS").getAvailableSlots() == 0)
+    worker.updateThenGetDiskInfos(heartbeatDisks, Some(estimatedPartitionSize))
+    assert(worker.diskInfos.get("HDFS").getAvailableSlots() > 0)
+    assert(worker.totalAvailableSlots() > 0)
+
+    // A DFS disk first seen in a heartbeat (e.g. right after an HA snapshot restore):
+    // use a fresh wire copy - the call above mutates heartbeatDisks in place, which
+    // would otherwise mask the zero-input case.
+    val freshDisks = new util.HashMap[String, DiskInfo]()
+    worker.diskInfos.asScala.foreach { case (mountPoint, disk) =>
+      freshDisks.put(mountPoint, PbSerDeUtils.fromPbDiskInfo(PbSerDeUtils.toPbDiskInfo(disk)))
+    }
+    assert(freshDisks.get("HDFS").getAvailableSlots() == 0)
+    val freshWorker =
+      new WorkerInfo(
+        "localhost",
+        20000,
+        20001,
+        20002,
+        20003,
+        20004,
+        new util.HashMap[String, DiskInfo](),
+        null)
+    freshWorker.updateThenGetDiskInfos(freshDisks, Some(estimatedPartitionSize))
+    assert(freshWorker.diskInfos.get("HDFS").getAvailableSlots() > 0)
+    assert(freshWorker.totalAvailableSlots() > 0)
   }
 }
