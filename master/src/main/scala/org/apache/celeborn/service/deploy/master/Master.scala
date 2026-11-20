@@ -1156,19 +1156,21 @@ private[celeborn] class Master(
         statusSystem.handleAppLost(appId, requestId)
         quotaManager.handleAppLost(appId)
         logInfo(s"Removed application $appId")
-        try {
-          if (remoteStorageDirs.isDefined) {
-            checkAndCleanExpiredAppDirsOnDFS(appId)
-          }
-        } catch {
-          // DFS cleanup is best-effort. Letting it escape kills this Runnable before the reply,
-          // and because the failure is only captured in the submit() Future it is never even
-          // logged: the client then blocks for masterClient.maxRetries * rpc.askTimeout on exit.
-          case e: Throwable =>
-            logError(s"Failed to clean expired app dirs on DFS for $appId.", e)
-        }
+        // Reply before the DFS cleanup: deleting an expired app dir over S3/OSS gateways
+        // can take minutes, while the client asks with celeborn.masterClient.rpc.askTimeout
+        // and retries the whole ApplicationLost up to celeborn.masterClient.maxRetries -
+        // replying after the cleanup blocks SparkContext.stop() on the driver for
+        // maxRetries * askTimeout. The cleanup below stays best-effort and is logged.
         if (context != null) {
           context.reply(ApplicationLostResponse(StatusCode.SUCCESS))
+        }
+        if (remoteStorageDirs.isDefined) {
+          try {
+            checkAndCleanExpiredAppDirsOnDFS(appId)
+          } catch {
+            case e: Throwable =>
+              logError(s"Failed to clean expired app dirs on DFS for $appId.", e)
+          }
         }
       }
     })
@@ -1202,9 +1204,17 @@ private[celeborn] class Master(
       logWarning(s"No FileSystem for storage type $storageType, skip cleaning $dfsWorkPath.")
     } else if (fs.exists(dfsWorkPath)) {
       if (expiredDir.nonEmpty) {
-        val dirToDelete = new Path(dfsWorkPath, expiredDir)
-        // delete specific app dir on application lost
-        CelebornHadoopUtils.deleteDFSPathOrLogError(fs, dirToDelete, true)
+        // The ApplicationLost reply is sent before this cleanup runs, so a retried
+        // application may have re-registered with the same appId and started writing
+        // fresh data under the same path again. Skip the delete in that case, mirroring
+        // the guard the expired-dirs sweep below applies to every entry.
+        if (statusSystem.appHeartbeatTime.containsKey(expiredDir)) {
+          logInfo(s"Skip cleaning DFS app dir for $expiredDir: the application re-registered.")
+        } else {
+          val dirToDelete = new Path(dfsWorkPath, expiredDir)
+          // delete specific app dir on application lost
+          CelebornHadoopUtils.deleteDFSPathOrLogError(fs, dirToDelete, true)
+        }
       } else {
         val iter = fs.listStatusIterator(dfsWorkPath)
         while (iter.hasNext && isMasterActive == 1) {

@@ -63,6 +63,14 @@ class MasterRemoteStorageCleanupSuite extends AnyFunSuite with MasterClusterFeat
     captor.getValue.asInstanceOf[ApplicationLostResponse]
   }
 
+  // The reply is sent before the DFS cleanup starts (NGSOK-2548), so post-reply
+  // assertions on the cleanup result must wait for the async handler to finish.
+  private def waitFor(description: String)(cond: => Boolean): Unit = {
+    val deadline = System.currentTimeMillis() + replyTimeoutMs
+    while (!cond && System.currentTimeMillis() < deadline) Thread.sleep(100)
+    assert(cond, s"$description not satisfied within ${replyTimeoutMs}ms")
+  }
+
   test("handleApplicationLost cleans the lost app dir on every configured remote storage") {
     val hdfsRoot = getTmpDir()
     val s3Root = getTmpDir()
@@ -92,11 +100,12 @@ class MasterRemoteStorageCleanupSuite extends AnyFunSuite with MasterClusterFeat
       assert(awaitLostResponse(context).status === StatusCode.SUCCESS)
       // Each storage must be cleaned through the FileSystem registered for its own type: probing
       // every configured FileSystem instead fails with "Wrong FS" on the first foreign path.
-      assert(LocalBackedS3FileSystem.probes.get() > probesBefore)
-      roots.foreach { root =>
-        assert(!Files.exists(appDir(root, conf, lostApp)), s"lost app dir survived under $root")
-        assert(Files.exists(appDir(root, conf, liveApp)), s"live app dir deleted under $root")
-      }
+      waitFor("cleanup probes on the S3 stand-in")(
+        LocalBackedS3FileSystem.probes.get() > probesBefore)
+      waitFor("lost app dir removal")(roots.forall(root =>
+        !Files.exists(appDir(root, conf, lostApp))))
+      roots.foreach(root =>
+        assert(Files.exists(appDir(root, conf, liveApp)), s"live app dir deleted under $root"))
     } finally {
       master.rpcEnv.shutdown()
     }
@@ -124,7 +133,7 @@ class MasterRemoteStorageCleanupSuite extends AnyFunSuite with MasterClusterFeat
       // Cleanup is best-effort: an exception escaping it would kill the handler before the reply,
       // leaving the client to block until its RPC retries are exhausted.
       assert(awaitLostResponse(context).status === StatusCode.SUCCESS)
-      assert(BrokenS3FileSystem.probes.get() > probesBefore, "cleanup was never attempted")
+      waitFor("cleanup attempt")(BrokenS3FileSystem.probes.get() > probesBefore)
     } finally {
       master.rpcEnv.shutdown()
     }
